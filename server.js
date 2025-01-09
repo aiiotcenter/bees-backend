@@ -6,7 +6,6 @@ const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
 const saveData = require('./save-data'); // Import save-data.js
-
 dotenv.config();
 
 const app = express();
@@ -22,8 +21,6 @@ const corsOptions = {
 app.use(cors());
 app.use(express.json());
 
-// Secret key for signing JWTs
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 
 // In-memory user store (simulating a database for this example)
 let users = [
@@ -49,14 +46,6 @@ const authenticateJWT = (req, res, next) => {
   });
 };
 
-// Ensure all middleware functions are correctly defined and passed
-const someMiddlewareFunction = (req, res, next) => {
-  // Middleware logic here
-  next();
-};
-
-// Example of correct usage
-app.use(someMiddlewareFunction);
 
 // Route to register a new user (For simplicity, we'll skip database and add static users)
 app.post('/api/register', async (req, res) => {
@@ -81,29 +70,22 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
 
-  // Find the user by username
+  // Check if the user exists
   const user = users.find(user => user.username === username);
   if (!user) {
-    return res.status(400).json({ message: 'User not found' });
+    return res.status(400).json({ message: 'Invalid username or password' });
   }
 
-  // Compare the entered password with the stored hashed password
-  const validPassword = await bcrypt.compare(password, user.password);
-  if (!validPassword) {
-    return res.status(400).json({ message: 'Invalid password' });
+  // Check if the password is correct
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    return res.status(400).json({ message: 'Invalid username or password' });
   }
 
   // Generate a JWT token
   const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn: '1h' });
 
-  // Save the token to a file
-  const tokenData = { username: user.username, token };
-  fs.writeFile(`./tokens/${user.username}_token.json`, JSON.stringify(tokenData), (err) => {
-    if (err) {
-      return res.status(500).json({ message: 'Error saving token to file' });
-    }
-    res.json({ message: 'Login successful', token });
-  });
+  return res.status(200).json({ token });
 });
 
 // Protected route to fetch data from the database

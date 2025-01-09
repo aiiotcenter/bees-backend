@@ -3,11 +3,11 @@ const mysql = require('mysql2');
 // Create a connection pool
 const pool = mysql.createPool({
   host: 'localhost',
-  user: 'root',
-  password: 'FadiFadi2020',  // Default password for MAMP MySQL
-  database: 'aiiovdft_bees',  // Your database name
-  port: 3306,  // Default port for MAMP MySQL
-  connectionLimit: 10  // Limit on the number of connections in the pool
+  user: 'aiiovdft_bees',  
+  password: 'FadiFadi2020',  
+  database: 'aiiovdft_bees', 
+  port: 3306,  
+  connectionLimit: 10 
 });
 
 // Example query using the pool
@@ -15,9 +15,9 @@ const query = 'SELECT * FROM sensor_data';
 
 pool.query(query, (err, results) => {
   if (err) {
-    console.error('Error executing query:', err.message);  // Log query execution error
+    console.error('Error executing query:', err.message);
   } else {
-    console.log('Query result:', results);  // Log the query results
+    console.log('Query result:', results); 
   }
 });
 
