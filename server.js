@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const dotenv = require('dotenv');
+const saveData = require('./save-data'); // Import save-data.js
 
 dotenv.config();
 
@@ -12,13 +13,11 @@ const app = express();
 
 const PORT = process.env.PORT || 5002;
 
-
 const corsOptions = {
   origin: 'https://bees.aiiot.center', // Replace with the allowed origin
   methods: ['GET', 'POST'], // Specify allowed HTTP methods
   allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
 };
-
 
 app.use(cors());
 app.use(express.json());
@@ -29,8 +28,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret_key';
 // In-memory user store (simulating a database for this example)
 let users = [
   {
-    username: 'john_doe',
-    password: '$2a$10$Pn.B.zwhmuXZ2g7R.wlfuZpPY5FwPIezSlDhM6FuFFtiLO0I.pWpy' // 'password123' hashed
+    username: 'admin',
+    password: 'admin123' // 'password123' hashed
   }
 ];
 
@@ -49,6 +48,15 @@ const authenticateJWT = (req, res, next) => {
     next();
   });
 };
+
+// Ensure all middleware functions are correctly defined and passed
+const someMiddlewareFunction = (req, res, next) => {
+  // Middleware logic here
+  next();
+};
+
+// Example of correct usage
+app.use(someMiddlewareFunction);
 
 // Route to register a new user (For simplicity, we'll skip database and add static users)
 app.post('/api/register', async (req, res) => {
@@ -111,6 +119,9 @@ app.get('/api/data', authenticateJWT, (req, res) => {
     res.json(results);
   });
 });
+
+// Use the save-data route
+app.use('/save-data', saveData);
 
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
