@@ -1,0 +1,6 @@
+{
+    "app_type": "node",
+    "startup_file": "dist/server.js",
+    "app_root": "/home/aiiovdft/bees-backend.aiiot.center/bees-backend/"
+  }
+  
