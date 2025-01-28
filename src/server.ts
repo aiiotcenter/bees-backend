@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 5006;
 const corsOptions = {
   origin: [
     'http://localhost:3000', // Local testing front-end URL (Adjust if your local frontend runs on a different port)
-    'http://mybees.aiiot.center/dashboard', // Live front-end URL
+    'http://mybees.aiiot.center/api/data', // Live front-end URL
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true, // If you need to send cookies with requests
