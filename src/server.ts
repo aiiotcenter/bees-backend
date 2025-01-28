@@ -1,8 +1,8 @@
 import express, { Request, Response } from 'express';
-import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import cors from 'cors'; // Import cors
 import pool from './config/database'; // Import MySQL pool
 import saveData from './routes/save-data'; // Import save-data route
 
@@ -11,14 +11,9 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5002;
 
-// CORS options
-const corsOptions = {
-  origin: 'https://mybees.aiiot.center',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
+// Enable CORS for all origins
+app.use(cors());
 
-app.use(cors(corsOptions));
 app.use(express.json());
 
 // In-memory user store

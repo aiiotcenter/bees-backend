@@ -17,13 +17,14 @@ const fs_1 = __importDefault(require("fs"));
 const database_1 = __importDefault(require("../config/database"));
 const router = express_1.default.Router();
 router.post('/', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { temperature = 0.0, humidity = 0.0, weight = 0.0, distance = 0.0, sound_status = 0, light_status = 0 } = req.body;
+    const { temperature = 0.0, humidity = 0.0, weight = 0.0, distance = 0.0, sound_status = 0, light_status = 0, } = req.body;
+    // Log received data for debugging
     const logData = `Received Data: Temp=${temperature}, Hum=${humidity}, Weight=${weight}, Dist=${distance}, Sound=${sound_status}, Light=${light_status}\n`;
     fs_1.default.appendFileSync('debug.log', logData);
     try {
         const sql = "INSERT INTO sensor_data (temperature, humidity, weight, distance, sound_status, light_status) VALUES (?, ?, ?, ?, ?, ?)";
-        yield database_1.default.execute(sql, [temperature, humidity, weight, distance, sound_status, light_status]);
-        res.json({ status: "success", message: "Data saved successfully." });
+        yield database_1.default.query(sql, [temperature, humidity, weight, distance, sound_status, light_status]);
+        res.status(201).json({ status: "success", message: "Data saved successfully." });
     }
     catch (err) {
         fs_1.default.appendFileSync('debug.log', `Database Error: ${err.message}\n`);
