@@ -9,10 +9,20 @@ import saveData from './routes/save-data'; // Import save-data route
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5002;
+const PORT = process.env.PORT || 5006;
 
-// Enable CORS for all origins
-app.use(cors());
+// CORS Configuration
+const corsOptions = {
+  origin: [
+    'http://localhost:3000', // Local testing front-end URL (Adjust if your local frontend runs on a different port)
+    'http://mybees.aiiot.center/dashboard', // Live front-end URL
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true, // If you need to send cookies with requests
+};
+
+// Enable CORS with the configured options
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
@@ -64,7 +74,9 @@ app.get('/api/data', async (req: Request, res: Response) => {
   const query = 'SELECT * FROM sensor_data';
 
   try {
+    console.log('Executing query:', query); // Log the query
     const [results] = await pool.query(query);
+    console.log('Query result:', results);  // Log the result
     res.json(results);
   } catch (err: any) {
     console.error('Database query error:', err.message);
