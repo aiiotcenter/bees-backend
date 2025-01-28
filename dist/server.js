@@ -23,7 +23,7 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5002;
 const corsOptions = {
-    origin: 'https://bees.aiiot.center', // Replace with the allowed origin
+    origin: 'https://mybees.aiiot.center', // Replace with the allowed origin
     methods: ['GET', 'POST'], // Specify allowed HTTP methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
 };

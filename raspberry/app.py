@@ -6,7 +6,7 @@ import Adafruit_DHT
 from hx711 import HX711
 
 # API Endpoint
-API_URL = "http://bees.aiiot.center:3000/save-data"
+API_URL = "http://mybees.aiiot.center:3000/save-data"
 
 # GPIO Pin Configuration
 TRIG = 14

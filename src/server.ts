@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5002;
 
 // CORS options
 const corsOptions = {
-  origin: 'https://bees.aiiot.center',
+  origin: 'https://mybees.aiiot.center',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
