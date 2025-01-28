@@ -22,11 +22,42 @@ const save_data_1 = __importDefault(require("./routes/save-data")); // Add `.js`
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 5002;
+// const corsOptions = {
+//     origin: 'https://mybees.aiiot.center', // Replace with the allowed origin
+//     methods: ['GET', 'POST'], // Specify allowed HTTP methods
+//     allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+// };
+
+
+
+const express = require('express');
+const cors = require('cors');
+
+
+
 const corsOptions = {
     origin: 'https://mybees.aiiot.center', // Replace with the allowed origin
     methods: ['GET', 'POST'], // Specify allowed HTTP methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
 };
+
+app.use(cors(corsOptions));
+
+// Your routes here
+app.get('/api/data', (req, res) => {
+    res.json({ message: 'CORS works!' });
+});
+
+app.listen(3000, () => {
+    console.log('Server is running on port 3000');
+});
+
+
+
+
+
+
+
 app.use((0, cors_1.default)(corsOptions));
 app.use(express_1.default.json());
 // In-memory user store (simulating a database for this example)
