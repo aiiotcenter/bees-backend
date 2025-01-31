@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Fetch data from the database
+// Fetch data from the databasee
 app.get('/api/data', async (req: Request, res: Response) => {
   const query = 'SELECT * FROM sensor_data';
   try {
