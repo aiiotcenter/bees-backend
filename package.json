@@ -27,7 +27,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",
-    "@types/node": "^20.17.12",
+    "@types/node": "^20.17.16",
     "concurrently": "^8.0.0",
     "nodemon": "^3.1.9",
     "typescript": "^5.7.3"
