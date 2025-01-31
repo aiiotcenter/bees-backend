@@ -6,16 +6,8 @@ import saveData from './routes/save-data'; // Import save-data route
 
 dotenv.config();
 const app = express();
-const PORT = process.env.PORT || 5002;
 
-// CORS options
-const corsOptions = {
-  origin: 'http://mybees.aiiot.center/dashboard',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
-
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(express.json());
 
 // Fetch data from the database
@@ -34,6 +26,6 @@ app.get('/api/data', async (req: Request, res: Response) => {
 app.use('/save-data', saveData);
 
 // Start the server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(process.env.PORT || 5002, () => {
+  console.log(`Server is running`);
 });
