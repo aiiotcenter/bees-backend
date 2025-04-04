@@ -7,8 +7,11 @@ def get_gps_location():
     try:
         port = serial.Serial("/dev/serial0", baudrate=9600, timeout=1)
         while True:
+            print("Reading GPS data...")
             data = port.readline().decode("utf-8", errors="ignore")
+            print(f"Raw GPS data: {data.strip()}")
             if data.startswith("$GPGGA") or data.startswith("$GPRMC"):
+                print(f"Parsing GPS data: {data.strip()}")
                 msg = pynmea2.parse(data)
                 if hasattr(msg, 'latitude') and hasattr(msg, 'longitude'):
                     lat = msg.latitude
