@@ -142,19 +142,19 @@ def main():
             print("\nCollecting sensor data...")
             
             # Get sensor data
-            temperature, humidity = get_temp_humidity()
+            #temperature, humidity = get_temp_humidity()
             # weight = get_weight(hx)
-            distance = get_distance()
+            #distance = get_distance()
             sound_detected = monitor_sound()
             # light_detected = monitor_light()
 
             # Prepare data payload
             data = {
                 "hiveId":1 ,
-                "temperature": temperature if temperature is not None else 0,
-                "humidity": humidity if humidity is not None else 0,
+                "temperature":  0,
+                "humidity":  0,
                 "weight": 0,
-                "distance": distance if distance is not None else 0,
+                "distance": 0,
                 "soundStatus": int(sound_detected),
                 "isDoorOpen" : 0 ,
                 "numOfIn" : 0 ,
