@@ -31,6 +31,7 @@ def cleanup_gpio():
 # Ultrasonic Distance Sensor
 def get_distance():
     try:
+        print("Reading distance sensor...")
         GPIO.output(TRIG, True)
         time.sleep(0.00001)
         GPIO.output(TRIG, False)
@@ -53,6 +54,7 @@ def get_distance():
 # Temperature and Humidity Sensor
 def get_temp_humidity():
     try:
+        print("Reading temperature and humidity...")
         humidity, temperature = Adafruit_DHT.read_retry(DHT_SENSOR, DHT_PIN)
         if humidity is not None and temperature is not None:
             temperature = round(temperature, 1)
@@ -70,6 +72,7 @@ def get_temp_humidity():
 # Sound Sensor
 def monitor_sound():
     try:
+        print("Reading sound sensor...")
         sound_detected = GPIO.input(SOUND_SENSOR_PIN) == GPIO.HIGH
         print(f"Sound sensor status: {'Detected' if sound_detected else 'Not Detected'}")
         return sound_detected
@@ -158,14 +161,19 @@ def main():
                 "numOfOut" : 0 ,
             }
 
+            print(f"Data payload: {data}")
             # Send data to the server
             send_data_to_api(data)
 
             # Wait before the next reading
             time.sleep(2)
 
+            print("Collecting GPS data...")
+
             latitude, longitude = get_gps_location()
             send_location_to_api(latitude, longitude)
+
+            print("Waiting for next cycle...")
 
             time.sleep(8)
 
