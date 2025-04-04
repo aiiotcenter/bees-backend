@@ -5,7 +5,7 @@ import requests
 # Get GPS location (latitude and longitude)
 def get_gps_location():
     try:
-        port = serial.Serial("/dev/serial0", baudrate=4800, timeout=1)
+        port = serial.Serial("/dev/serial0", baudrate=115200, timeout=1)
         while True:
             print("Reading GPS data...")
             data = port.readline().decode("utf-8", errors="ignore")
