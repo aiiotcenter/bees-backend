@@ -9,12 +9,11 @@ from gps_module import get_gps_location, send_location_to_api
 API_URL = "http://mybees.aiiot.center/api/records" 
 
 # GPIO Pin Configuration
-TRIG = 14
-ECHO = 15
-DHT_PIN = 18
+TRIG = 8
+ECHO = 7
+DHT_PIN = 23
 DHT_SENSOR = Adafruit_DHT.DHT11
-SOUND_SENSOR_PIN = 23
-LDR_PIN = 24  # GPIO pin for the LDR circuit
+SOUND_SENSOR_PIN = 2
 
 # Setup GPIO
 def setup_gpio():
@@ -23,7 +22,6 @@ def setup_gpio():
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(ECHO, GPIO.IN)
     GPIO.setup(SOUND_SENSOR_PIN, GPIO.IN)
-    GPIO.setup(LDR_PIN, GPIO.IN)
 
 # Cleanup GPIO
 def cleanup_gpio():
