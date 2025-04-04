@@ -87,20 +87,22 @@ def monitor_sound():
 #         print(f"Error reading light sensor: {e}")
 #         return False
 
+
+
 # HX711 Weight Sensor
-def initialize_hx711():
-    print("Initializing HX711 weight sensor...")
-    try:
-        hx = HX711(5, 6)
-        hx.set_reading_format("MSB", "MSB")
-        hx.set_reference_unit(114)  # Adjust based on your setup
-        hx.reset()
-        hx.tare()
-        print("HX711 initialized successfully.")
-        return hx
-    except Exception as e:
-        print(f"Error initializing HX711: {e}")
-        return None
+# def initialize_hx711():
+#     print("Initializing HX711 weight sensor...")
+#     try:
+#         hx = HX711(5, 6)
+#         hx.set_reading_format("MSB", "MSB")
+#         hx.set_reference_unit(114)  # Adjust based on your setup
+#         hx.reset()
+#         hx.tare()
+#         print("HX711 initialized successfully.")
+#         return hx
+#     except Exception as e:
+#         print(f"Error initializing HX711: {e}")
+#         return None
 
 def get_weight(hx):
     try:
@@ -126,11 +128,11 @@ def send_data_to_api(data):
 
 def main():
     setup_gpio()
-    hx = initialize_hx711()
+    # hx = initialize_hx711()
 
-    if not hx:
-        print("Failed to initialize HX711. Exiting...")
-        return
+    # if not hx:
+    #     print("Failed to initialize HX711. Exiting...")
+    #     return
 
     try:
         while True:
@@ -138,7 +140,7 @@ def main():
             
             # Get sensor data
             temperature, humidity = get_temp_humidity()
-            weight = get_weight(hx)
+            # weight = get_weight(hx)
             distance = get_distance()
             sound_detected = monitor_sound()
             # light_detected = monitor_light()
@@ -148,7 +150,7 @@ def main():
                 "hiveId":1 ,
                 "temperature": temperature if temperature is not None else 0,
                 "humidity": humidity if humidity is not None else 0,
-                "weight": weight if weight is not None else 0,
+                "weight": 0,
                 "distance": distance if distance is not None else 0,
                 "soundStatus": int(sound_detected),
                 "isDoorOpen" : 0 ,
