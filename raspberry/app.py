@@ -56,6 +56,7 @@ def get_temp_humidity():
     try:
         print("Reading temperature and humidity...")
         humidity, temperature = Adafruit_DHT.read_retry(DHT_SENSOR, DHT_PIN)
+        print(f"Raw DHT sensor data: Humidity={humidity}, Temperature={temperature}")
         if humidity is not None and temperature is not None:
             temperature = round(temperature, 1)
             humidity = round(humidity, 1)
@@ -142,7 +143,7 @@ def main():
             print("\nCollecting sensor data...")
             
             # Get sensor data
-            #temperature, humidity = get_temp_humidity()
+            temperature, humidity = get_temp_humidity()
             # weight = get_weight(hx)
             #distance = get_distance()
             sound_detected = monitor_sound()
@@ -151,8 +152,8 @@ def main():
             # Prepare data payload
             data = {
                 "hiveId":1 ,
-                "temperature":  0,
-                "humidity":  0,
+                "temperature":  temperature if temperature is not None else 0, 
+                "humidity":  humidity if humidity is not None else 0,
                 "weight": 0,
                 "distance": 0,
                 "soundStatus": int(sound_detected),
