@@ -1,18 +1,18 @@
 import requests
-import random
 import time
 import RPi.GPIO as GPIO
 import Adafruit_DHT
 from hx711 import HX711
+from gps_module import get_gps_location, send_location_to_api
 
 # API Endpoint
-API_URL = "http://mybees.aiiot.center/dashboard"
+API_URL = "http://mybees.aiiot.center/api/records" 
 
 # GPIO Pin Configuration
 TRIG = 14
 ECHO = 15
 DHT_PIN = 18
-DHT_SENSOR = Adafruit_DHT.DHT22
+DHT_SENSOR = Adafruit_DHT.DHT11
 SOUND_SENSOR_PIN = 23
 LDR_PIN = 24  # GPIO pin for the LDR circuit
 
@@ -50,19 +50,24 @@ def get_distance():
         return distance
     except Exception as e:
         print(f"Error reading distance sensor: {e}")
-        return None
+        return 0
 
 # Temperature and Humidity Sensor
 def get_temp_humidity():
     try:
-        # Generate random data as placeholder
-        temperature = round(random.uniform(20, 30), 1)
-        humidity = round(random.uniform(50, 70), 1)
-        print(f"Temperature: {temperature} °C, Humidity: {humidity} %")
-        return temperature, humidity
+        humidity, temperature = Adafruit_DHT.read_retry(DHT_SENSOR, DHT_PIN)
+        if humidity is not None and temperature is not None:
+            temperature = round(temperature, 1)
+            humidity = round(humidity, 1)
+            print(f"Temperature: {temperature} °C, Humidity: {humidity} %")
+            return temperature, humidity
+        else:
+            print("Failed to get reading from DHT sensor.")
+            return 0, 0
     except Exception as e:
         print(f"Error reading temperature and humidity: {e}")
-        return None, None
+        return 0, 0
+
 
 # Sound Sensor
 def monitor_sound():
@@ -75,14 +80,14 @@ def monitor_sound():
         return False
 
 # Light Sensor (LDR)
-def monitor_light():
-    try:
-        light_detected = GPIO.input(LDR_PIN) == GPIO.HIGH
-        print(f"Light sensor status: {'Detected' if light_detected else 'Not Detected'}")
-        return light_detected
-    except Exception as e:
-        print(f"Error reading light sensor: {e}")
-        return False
+# def monitor_light():
+#     try:
+#         light_detected = GPIO.input(LDR_PIN) == GPIO.HIGH
+#         print(f"Light sensor status: {'Detected' if light_detected else 'Not Detected'}")
+#         return light_detected
+#     except Exception as e:
+#         print(f"Error reading light sensor: {e}")
+#         return False
 
 # HX711 Weight Sensor
 def initialize_hx711():
@@ -138,23 +143,31 @@ def main():
             weight = get_weight(hx)
             distance = get_distance()
             sound_detected = monitor_sound()
-            light_detected = monitor_light()
+            # light_detected = monitor_light()
 
             # Prepare data payload
             data = {
+                "hiveId":1 ,
                 "temperature": temperature if temperature is not None else 0,
                 "humidity": humidity if humidity is not None else 0,
                 "weight": weight if weight is not None else 0,
                 "distance": distance if distance is not None else 0,
-                "sound_status": int(sound_detected),
-                "light_status": int(light_detected),
+                "soundStatus": int(sound_detected),
+                "isDoorOpen" : 0 ,
+                "numOfIn" : 0 ,
+                "numOfOut" : 0 ,
             }
 
             # Send data to the server
             send_data_to_api(data)
 
             # Wait before the next reading
-            time.sleep(10)
+            time.sleep(2)
+
+            latitude, longitude = get_gps_location()
+            send_location_to_api(latitude, longitude)
+
+            time.sleep(8)
 
     except KeyboardInterrupt:
         print("Program terminated by user.")
