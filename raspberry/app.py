@@ -15,25 +15,23 @@ DHT_PIN = 23
 DHT_SENSOR = Adafruit_DHT.DHT11
 SOUND_SENSOR_PIN = 2
 
-# === HX711 Calibration ===
-# Set to 1 for calibration mode (then adjust after)
-REFERENCE_UNIT = 1  # Change this after calibration (e.g., 158)
-
 # Setup GPIO
 def setup_gpio():
-    print("🔧 Setting up GPIO pins...")
+    print("Setting up GPIO pins...")
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(ECHO, GPIO.IN)
     GPIO.setup(SOUND_SENSOR_PIN, GPIO.IN)
 
+# Cleanup GPIO
 def cleanup_gpio():
-    print("🧹 Cleaning up GPIO pins...")
+    print("Cleaning up GPIO pins...")
     GPIO.cleanup()
 
-# Distance Sensor
+# Ultrasonic Distance Sensor
 def get_distance():
     try:
+        print("Reading distance sensor...")
         GPIO.output(TRIG, True)
         time.sleep(0.00001)
         GPIO.output(TRIG, False)
@@ -41,114 +39,125 @@ def get_distance():
         start_time = time.time()
         while GPIO.input(ECHO) == 0:
             start_time = time.time()
+
         while GPIO.input(ECHO) == 1:
             end_time = time.time()
 
         elapsed_time = end_time - start_time
-        distance = (elapsed_time * 34300) / 2
-        print(f"📏 Distance: {distance:.2f} cm")
+        distance = (elapsed_time * 34300) / 2  # Distance in cm
+        print(f"Distance sensor reading: {distance:.2f} cm")
         return distance
     except Exception as e:
-        print(f"❌ Error reading distance: {e}")
+        print(f"Error reading distance sensor: {e}")
         return 0
 
-# DHT Sensor
+# Temperature and Humidity Sensor
 def get_temp_humidity():
     try:
-        print("🌡️ Reading temperature and humidity...")
+        print("Reading temperature and humidity...")
         humidity, temperature = Adafruit_DHT.read_retry(DHT_SENSOR, DHT_PIN)
-        print(f"📊 Raw DHT: Humidity={humidity}, Temp={temperature}")
+        print(f"Raw DHT sensor data: Humidity={humidity}, Temperature={temperature}")
         if humidity is not None and temperature is not None:
-            return round(temperature, 1), round(humidity, 1)
-        return 0, 0
+            temperature = round(temperature, 1)
+            humidity = round(humidity, 1)
+            print(f"Temperature: {temperature} °C, Humidity: {humidity} %")
+            return temperature, humidity
+        else:
+            print("Failed to get reading from DHT sensor.")
+            return 0, 0
     except Exception as e:
-        print(f"❌ Error reading DHT: {e}")
+        print(f"Error reading temperature and humidity: {e}")
         return 0, 0
+
 
 # Sound Sensor
 def monitor_sound():
     try:
+        print("Reading sound sensor...")
         sound_detected = GPIO.input(SOUND_SENSOR_PIN) == GPIO.HIGH
-        print(f"🎵 Sound detected: {'Yes' if sound_detected else 'No'}")
+        print(f"Sound sensor status: {'Detected' if sound_detected else 'Not Detected'}")
         return sound_detected
     except Exception as e:
-        print(f"❌ Error reading sound sensor: {e}")
+        print(f"Error reading sound sensor: {e}")
         return False
 
-def initialize_hx711():
-    print("⚖️ Initializing HX711...")
-    try:
-        # Ensure proper GPIO setup first
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(20, GPIO.OUT)  # SCK
-        GPIO.setup(16, GPIO.IN)   # DT
 
-        hx = HX711(16, 20)  # DT, SCK
+
+
+def initialize_hx711():
+    print("🔧 Initializing HX711 weight sensor...")
+    try:
+        hx = HX711(5, 6)
         hx.set_reading_format("MSB", "MSB")
-        hx.set_reference_unit(114)
+        print("✅ Reading format set to MSB.")
+        
+        hx.set_reference_unit(114)  # Adjust based on calibration
+        print("✅ Reference unit set to 114.")
+
+        print("🔄 Resetting HX711...")
         hx.reset()
+
+        print("⚖️ Performing tare (zeroing)...")
         hx.tare()
-        print("✅ HX711 Ready.")
+        print("✅ Tare complete. Ready to weigh.")
         return hx
     except Exception as e:
         print(f"❌ Error initializing HX711: {e}")
         return None
 
+
 def get_weight(hx):
     try:
-        print("⚖️ Checking if HX711 is ready...")
-        timeout_start = time.time()
-        timeout = 3  # 3 second timeout
+        print("📥 Reading weight...")
+        raw = hx.get_raw_data_mean()
+        print(f"📊 Raw data mean: {raw}")
 
-        while not hx.is_ready():
-            if time.time() > timeout_start + timeout:
-                print("⏱️ HX711 timeout: not ready.")
-                return 0
-            time.sleep(0.1)
+        weight = hx.get_weight_mean(5)
+        print(f"⚖️ Averaged weight over 5 readings: {weight:.2f} grams")
 
-        weight = round(hx.get_weight(5), 2)
-        print(f"⚖️ Weight: {weight} grams")
+        hx.power_down()
+        time.sleep(0.1)
+        hx.power_up()
+
         return weight
     except Exception as e:
-        print(f"❌ Error reading HX711: {e}")
-        return 0
-
-
+        print(f"❌ Error reading weight sensor: {e}")
+        return None
 
 
 # Send Data to API
 def send_data_to_api(data):
     try:
-        print(f"📤 Sending to API: {data}")
+        print(f"Sending data to API: {data}")
         response = requests.post(API_URL, data=data)
-        print(f"✅ API Response: {response.status_code} - {response.text}")
+        print(f"Request Method: POST")
+        print(f"Request URL: {response.request.url}")
+        print(f"Request Headers: {response.request.headers}")
+        print(f"Request Body: {response.request.body}")
+        print(f"API Response: {response.status_code} - {response.text}")
     except Exception as e:
-        print(f"❌ API Error: {e}")
+        print(f"Error sending data to API: {e}")
 
-# Main Program
 def main():
-    setup_gpio()
     hx = initialize_hx711()
-
     if not hx:
-        print("❌ HX711 failed. Exiting.")
+        print("❌ Failed to initialize HX711. Exiting...")
         return
 
     try:
         while True:
-            print("\n📡 Collecting data...")
+            print("\nCollecting sensor data...")
 
             temperature, humidity = get_temp_humidity()
             weight = get_weight(hx)
-            distance = get_distance()
             sound_detected = monitor_sound()
 
             data = {
                 "hiveId": 1,
-                "temperature": temperature,
-                "humidity": humidity,
-                "weight": weight,
-                "distance": distance,
+                "temperature": temperature if temperature is not None else 0,
+                "humidity": humidity if humidity is not None else 0,
+                "weight": weight if weight is not None else 0,
+                "distance": 0,
                 "soundStatus": int(sound_detected),
                 "isDoorOpen": 0,
                 "numOfIn": 0,
@@ -157,19 +166,16 @@ def main():
 
             print(f"📦 Data payload: {data}")
             send_data_to_api(data)
-
-            # If using GPS:
-            # latitude, longitude = get_gps_location()
-            # send_location_to_api(latitude, longitude)
-
-            time.sleep(5)
+            time.sleep(2)
 
     except KeyboardInterrupt:
-        print("🛑 Stopped by user.")
+        print("🛑 Program terminated by user.")
     except Exception as e:
-        print(f"❌ Runtime error: {e}")
+        print(f"❌ Unexpected error: {e}")
     finally:
         cleanup_gpio()
 
+
+# Run the script
 if __name__ == "__main__":
     main()
