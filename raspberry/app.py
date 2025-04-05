@@ -92,15 +92,18 @@ def initialize_hx711():
 
 def get_weight(hx):
     try:
-        weight = round(hx.get_weight(5), 2)  # 5 samples, rounded to 2 decimals
+        print("⚖️ Checking if HX711 is ready...")
+        if not hx.is_ready():
+            print("⚠️ HX711 not ready. Skipping weight read.")
+            return 0
+
+        weight = round(hx.get_weight(5), 2)
         print(f"⚖️ Weight: {weight} grams")
-        hx.power_down()
-        time.sleep(0.1)
-        hx.power_up()
         return weight
     except Exception as e:
         print(f"❌ Error reading HX711: {e}")
         return 0
+
 
 # Send Data to API
 def send_data_to_api(data):
