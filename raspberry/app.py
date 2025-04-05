@@ -150,7 +150,7 @@ def main():
             print("\nCollecting sensor data...")
 
             temperature, humidity = get_temp_humidity()
-            weight = get_weight(hx)
+            # weight = get_weight(hx)
             sound_detected = monitor_sound()
 
             data = {
