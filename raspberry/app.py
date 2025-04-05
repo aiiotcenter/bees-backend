@@ -137,8 +137,9 @@ def send_data_to_api(data):
         print(f"API Response: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"Error sending data to API: {e}")
-
 def main():
+    setup_gpio()
+
     hx = initialize_hx711()
     if not hx:
         print("❌ Failed to initialize HX711. Exiting...")
@@ -174,8 +175,7 @@ def main():
         print(f"❌ Unexpected error: {e}")
     finally:
         cleanup_gpio()
-
-
+        print("🔧 Cleaning up GPIO pins...")
 # Run the script
 if __name__ == "__main__":
     main()
