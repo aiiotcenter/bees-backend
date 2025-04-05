@@ -140,10 +140,10 @@ def send_data_to_api(data):
         print(f"Error sending data to API: {e}")
 
 def main():
-    hx = initialize_hx711()
-    if not hx:
-        print("❌ Failed to initialize HX711. Exiting...")
-        return
+    # hx = initialize_hx711()
+    # if not hx:
+    #     print("❌ Failed to initialize HX711. Exiting...")
+    #     return
 
     try:
         while True:
