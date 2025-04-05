@@ -150,14 +150,16 @@ def main():
             print("\nCollecting sensor data...")
 
             temperature, humidity = get_temp_humidity()
-            # weight = get_weight(hx)
+            # weight = get_weight(hx)  # 💬 Temporarily commented out
+            weight = 0  # ➕ Default value for now
+
             sound_detected = monitor_sound()
 
             data = {
                 "hiveId": 1,
                 "temperature": temperature if temperature is not None else 0,
                 "humidity": humidity if humidity is not None else 0,
-                "weight": weight if weight is not None else 0,
+                "weight": weight,
                 "distance": 0,
                 "soundStatus": int(sound_detected),
                 "isDoorOpen": 0,
