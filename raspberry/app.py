@@ -75,19 +75,23 @@ def monitor_sound():
         print(f"❌ Error reading sound sensor: {e}")
         return False
 
-# HX711 Setup
 def initialize_hx711():
     print("⚖️ Initializing HX711...")
     try:
-        hx = HX711(5, 6)
+        # Ensure proper GPIO setup first
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(20, GPIO.OUT)  # SCK
+        GPIO.setup(16, GPIO.IN)   # DT
+
+        hx = HX711(16, 20)  # DT, SCK
         hx.set_reading_format("MSB", "MSB")
-        hx.set_reference_unit(REFERENCE_UNIT)
+        hx.set_reference_unit(114)
         hx.reset()
         hx.tare()
         print("✅ HX711 Ready.")
         return hx
     except Exception as e:
-        print(f"❌ HX711 init error: {e}")
+        print(f"❌ Error initializing HX711: {e}")
         return None
 
 def get_weight(hx):
