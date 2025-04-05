@@ -94,7 +94,7 @@ def get_weight(hx):
     try:
         print("⚖️ Checking if HX711 is ready...")
         timeout_start = time.time()
-        timeout = 3  # seconds max to wait
+        timeout = 3  # 3 second timeout
 
         while not hx.is_ready():
             if time.time() > timeout_start + timeout:
@@ -108,6 +108,7 @@ def get_weight(hx):
     except Exception as e:
         print(f"❌ Error reading HX711: {e}")
         return 0
+
 
 
 
