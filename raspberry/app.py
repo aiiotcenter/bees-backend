@@ -84,44 +84,28 @@ def monitor_sound():
 
 
 
+# HX711 Weight Sensor
 def initialize_hx711():
-    print("🔧 Initializing HX711 weight sensor...")
+    print("Initializing HX711 weight sensor...")
     try:
         hx = HX711(5, 6)
         hx.set_reading_format("MSB", "MSB")
-        print("✅ Reading format set to MSB.")
-        
-        hx.set_reference_unit(114)  # Adjust based on calibration
-        print("✅ Reference unit set to 114.")
-
-        print("🔄 Resetting HX711...")
+        hx.set_reference_unit(114)  # Adjust based on your setup
         hx.reset()
-
-        print("⚖️ Performing tare (zeroing)...")
         hx.tare()
-        print("✅ Tare complete. Ready to weigh.")
+        print("HX711 initialized successfully.")
         return hx
     except Exception as e:
-        print(f"❌ Error initializing HX711: {e}")
+        print(f"Error initializing HX711: {e}")
         return None
-
 
 def get_weight(hx):
     try:
-        print("📥 Reading weight...")
-        raw = hx.get_raw_data_mean()
-        print(f"📊 Raw data mean: {raw}")
-
-        weight = hx.get_weight_mean(5)
-        print(f"⚖️ Averaged weight over 5 readings: {weight:.2f} grams")
-
-        hx.power_down()
-        time.sleep(0.1)
-        hx.power_up()
-
+        weight = hx.get_weight(5)
+        print(f"Weight sensor reading: {weight:.2f} grams")
         return weight
     except Exception as e:
-        print(f"❌ Error reading weight sensor: {e}")
+        print(f"Error reading weight sensor: {e}")
         return None
 
 
