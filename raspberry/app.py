@@ -87,7 +87,8 @@ def monitor_sound():
 def initialize_hx711():
     print("🔧 Initializing HX711 weight sensor...")
     try:
-        hx = HX711(5, 6)
+        hx = HX711(16, 20)
+
         hx.set_reading_format("MSB", "MSB")
         print("✅ Reading format set to MSB.")
         
