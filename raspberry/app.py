@@ -169,14 +169,14 @@ def main():
             # Wait before the next reading
             time.sleep(2)
 
-            print("Collecting GPS data...")
+            # print("Collecting GPS data...")
 
-            latitude, longitude = get_gps_location()
-            send_location_to_api(latitude, longitude)
+            # latitude, longitude = get_gps_location()
+            # send_location_to_api(latitude, longitude)
 
-            print("Waiting for next cycle...")
+            # print("Waiting for next cycle...")
 
-            time.sleep(8)
+            # time.sleep(8)
 
     except KeyboardInterrupt:
         print("Program terminated by user.")
