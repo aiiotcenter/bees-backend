@@ -81,41 +81,49 @@ def monitor_sound():
         print(f"Error reading sound sensor: {e}")
         return False
 
-# Light Sensor (LDR)
-# def monitor_light():
-#     try:
-#         light_detected = GPIO.input(LDR_PIN) == GPIO.HIGH
-#         print(f"Light sensor status: {'Detected' if light_detected else 'Not Detected'}")
-#         return light_detected
-#     except Exception as e:
-#         print(f"Error reading light sensor: {e}")
-#         return False
-
 
 
 
 def initialize_hx711():
-    print("Initializing HX711 weight sensor...")
+    print("🔧 Initializing HX711 weight sensor...")
     try:
         hx = HX711(5, 6)
         hx.set_reading_format("MSB", "MSB")
-        hx.set_reference_unit(114)  # Adjust based on your setup
+        print("✅ Reading format set to MSB.")
+        
+        hx.set_reference_unit(114)  # Adjust based on calibration
+        print("✅ Reference unit set to 114.")
+
+        print("🔄 Resetting HX711...")
         hx.reset()
+
+        print("⚖️ Performing tare (zeroing)...")
         hx.tare()
-        print("HX711 initialized successfully.")
+        print("✅ Tare complete. Ready to weigh.")
         return hx
     except Exception as e:
-        print(f"Error initializing HX711: {e}")
+        print(f"❌ Error initializing HX711: {e}")
         return None
+
 
 def get_weight(hx):
     try:
-        weight = hx.get_weight(5)
-        print(f"Weight sensor reading: {weight:.2f} grams")
+        print("📥 Reading weight...")
+        raw = hx.get_raw_data_mean()
+        print(f"📊 Raw data mean: {raw}")
+
+        weight = hx.get_weight_mean(5)
+        print(f"⚖️ Averaged weight over 5 readings: {weight:.2f} grams")
+
+        hx.power_down()
+        time.sleep(0.1)
+        hx.power_up()
+
         return weight
     except Exception as e:
-        print(f"Error reading weight sensor: {e}")
+        print(f"❌ Error reading weight sensor: {e}")
         return None
+
 
 # Send Data to API
 def send_data_to_api(data):
