@@ -93,7 +93,7 @@ def monitor_sound():
 
 
 
-HX711 Weight Sensor
+
 def initialize_hx711():
     print("Initializing HX711 weight sensor...")
     try:
