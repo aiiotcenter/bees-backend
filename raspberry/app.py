@@ -93,9 +93,14 @@ def initialize_hx711():
 def get_weight(hx):
     try:
         print("⚖️ Checking if HX711 is ready...")
-        if not hx.is_ready():
-            print("⚠️ HX711 not ready. Skipping weight read.")
-            return 0
+        timeout_start = time.time()
+        timeout = 3  # seconds max to wait
+
+        while not hx.is_ready():
+            if time.time() > timeout_start + timeout:
+                print("⏱️ HX711 timeout: not ready.")
+                return 0
+            time.sleep(0.1)
 
         weight = round(hx.get_weight(5), 2)
         print(f"⚖️ Weight: {weight} grams")
@@ -103,6 +108,7 @@ def get_weight(hx):
     except Exception as e:
         print(f"❌ Error reading HX711: {e}")
         return 0
+
 
 
 # Send Data to API
