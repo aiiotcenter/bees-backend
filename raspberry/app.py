@@ -139,59 +139,42 @@ def send_data_to_api(data):
         print(f"Error sending data to API: {e}")
 
 def main():
-    setup_gpio()
-    # hx = initialize_hx711()
-
-    # if not hx:
-    #     print("Failed to initialize HX711. Exiting...")
-    #     return
+    hx = initialize_hx711()
+    if not hx:
+        print("❌ Failed to initialize HX711. Exiting...")
+        return
 
     try:
         while True:
             print("\nCollecting sensor data...")
-            
-            # Get sensor data
-            temperature, humidity = get_temp_humidity()
-            # weight = get_weight(hx)
-            #distance = get_distance()
-            sound_detected = monitor_sound()
-            # light_detected = monitor_light()
 
-            # Prepare data payload
+            temperature, humidity = get_temp_humidity()
+            weight = get_weight(hx)
+            sound_detected = monitor_sound()
+
             data = {
-                "hiveId":1 ,
-                "temperature":  temperature if temperature is not None else 0, 
-                "humidity":  humidity if humidity is not None else 0,
-                "weight": 0,
+                "hiveId": 1,
+                "temperature": temperature if temperature is not None else 0,
+                "humidity": humidity if humidity is not None else 0,
+                "weight": weight if weight is not None else 0,
                 "distance": 0,
                 "soundStatus": int(sound_detected),
-                "isDoorOpen" : 0 ,
-                "numOfIn" : 0 ,
-                "numOfOut" : 0 ,
+                "isDoorOpen": 0,
+                "numOfIn": 0,
+                "numOfOut": 0,
             }
 
-            print(f"Data payload: {data}")
-            # Send data to the server
+            print(f"📦 Data payload: {data}")
             send_data_to_api(data)
-
-            # Wait before the next reading
             time.sleep(2)
 
-            # print("Collecting GPS data...")
-
-            # latitude, longitude = get_gps_location()
-            # send_location_to_api(latitude, longitude)
-
-            # print("Waiting for next cycle...")
-
-            # time.sleep(8)
-
     except KeyboardInterrupt:
-        print("Program terminated by user.")
+        print("🛑 Program terminated by user.")
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        print(f"❌ Unexpected error: {e}")
     finally:
         cleanup_gpio()
+
 
 # Run the script
 if __name__ == "__main__":
