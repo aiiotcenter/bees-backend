@@ -92,21 +92,30 @@ def detect_bee_movement():
     in_count = 0
     out_count = 0
 
-    if GPIO.input(IR_SENSOR_IN) == GPIO.LOW:
+    ir_in_triggered = GPIO.input(IR_SENSOR_IN) == GPIO.LOW
+    ir_out_triggered = GPIO.input(IR_SENSOR_OUT) == GPIO.LOW
+
+    if ir_in_triggered:
+        print("📍 IR_SENSOR_IN triggered")
         start_time = time.time()
         while time.time() - start_time < 0.5:
             if GPIO.input(IR_SENSOR_OUT) == GPIO.LOW:
-                print("🐝 Bee exited")
+                print("🐝 Detected bee exiting (IN ➡ OUT)")
                 out_count += 1
                 break
 
-    elif GPIO.input(IR_SENSOR_OUT) == GPIO.LOW:
+    elif ir_out_triggered:
+        print("📍 IR_SENSOR_OUT triggered")
         start_time = time.time()
         while time.time() - start_time < 0.5:
             if GPIO.input(IR_SENSOR_IN) == GPIO.LOW:
-                print("🐝 Bee entered")
+                print("🐝 Detected bee entering (OUT ➡ IN)")
                 in_count += 1
                 break
+
+    # If both are LOW at the same time but didn't match above logic
+    elif ir_in_triggered and ir_out_triggered:
+        print("⚠️ Both IR sensors triggered simultaneously — possible congestion")
 
     return in_count, out_count
 
