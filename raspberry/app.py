@@ -87,40 +87,40 @@ def get_weight(hx):
     except Exception as e:
         print(f"Error reading weight: {e}")
         return 0
-
 def detect_bee_movement():
     in_count = 0
     out_count = 0
 
-    ir_in_triggered = GPIO.input(IR_SENSOR_IN) == GPIO.LOW
-    ir_out_triggered = GPIO.input(IR_SENSOR_OUT) == GPIO.LOW
+    ir_in_state = GPIO.input(IR_SENSOR_IN)
+    ir_out_state = GPIO.input(IR_SENSOR_OUT)
 
-    if ir_in_triggered:
-        print("📍 IR_SENSOR_IN triggered")
+    if ir_in_state == GPIO.LOW:
+        print("📍 IR_SENSOR_IN triggered (LOW)")
         start_time = time.time()
-        while time.time() - start_time < 0.5:
+        while time.time() - start_time < 1.5:
             if GPIO.input(IR_SENSOR_OUT) == GPIO.LOW:
-                print("🐝 Bee exited (IN ➡ OUT)")
+                print("✅ Bee exited (IN ➡ OUT)")
                 out_count += 1
-                return in_count, out_count
+                break
+        else:
+            print("⚠️ Only IR_SENSOR_IN triggered — no OUT detection")
 
-        print("👀 Only IR_SENSOR_IN triggered — possible bee detected but not exited")
-
-    elif ir_out_triggered:
-        print("📍 IR_SENSOR_OUT triggered")
+    elif ir_out_state == GPIO.LOW:
+        print("📍 IR_SENSOR_OUT triggered (LOW)")
         start_time = time.time()
-        while time.time() - start_time < 0.5:
+        while time.time() - start_time < 1.5:
             if GPIO.input(IR_SENSOR_IN) == GPIO.LOW:
-                print("🐝 Bee entered (OUT ➡ IN)")
+                print("✅ Bee entered (OUT ➡ IN)")
                 in_count += 1
-                return in_count, out_count
-
-        print("👀 Only IR_SENSOR_OUT triggered — possible bee detected but not entered")
+                break
+        else:
+            print("⚠️ Only IR_SENSOR_OUT triggered — no IN detection")
 
     else:
-        print("🕵️ No IR activity")
+        print("🕵️ No IR movement detected")
 
     return in_count, out_count
+
 
 
 def send_data_to_api(data):
