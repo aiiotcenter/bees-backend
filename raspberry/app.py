@@ -20,12 +20,14 @@ IR_SENSOR_OUT = 27
 # Setup GPIO
 def setup_gpio():
     print("Setting up GPIO pins...")
+    GPIO.setwarnings(False)  # 👈 Suppress warnings
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(TRIG, GPIO.OUT)
     GPIO.setup(ECHO, GPIO.IN)
     GPIO.setup(SOUND_SENSOR_PIN, GPIO.IN)
     GPIO.setup(IR_SENSOR_IN, GPIO.IN)
     GPIO.setup(IR_SENSOR_OUT, GPIO.IN)
+
 
 # Cleanup GPIO
 def cleanup_gpio():
