@@ -7,7 +7,7 @@ API_URL = f"http://bees-backend.aiiot.center/api/hives/status/{HIVE_ID}"
 def report_status(status_value):
     try:
         data = {"status": int(status_value)}
-        response = requests.post(API_URL, json=data)
+        response = requests.put(API_URL, json=data)
         print(f"📡 Sent status {status_value} to {API_URL}, HTTP {response.status_code}")
     except Exception as e:
         print(f"❌ Failed to report status {status_value}: {e}")
