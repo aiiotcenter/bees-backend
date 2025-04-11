@@ -105,7 +105,7 @@ def main():
             }
 
             send_data_to_api(data)
-            time.sleep(2)
+            time.sleep(25)
 
     except KeyboardInterrupt:
         print("🛑 Program stopped by user.")
