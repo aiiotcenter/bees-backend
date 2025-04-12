@@ -3,7 +3,7 @@ import time
 import RPi.GPIO as GPIO
 import Adafruit_DHT
 from hx711 import HX711
-from gps_utils import get_gps_location, send_location_to_api  # <-- Imported GPS functions
+from gps_module import get_gps_location, send_location_to_api  # <-- Imported GPS functions
 
 # API Endpoint for sensor data
 API_URL = "http://bees-backend.aiiot.center/api/records"
