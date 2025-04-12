@@ -100,8 +100,10 @@ def main():
 
             # Get and send GPS location
             latitude, longitude = get_gps_location()
-            if latitude is not None and longitude is not None:
+            if latitude is not None and longitude is not None and (latitude != 0.0 or longitude != 0.0):
                 send_location_to_api(latitude, longitude)
+            else:
+                print("⏳ No GPS fix yet — will retry next cycle.")
 
             # Send sensor data
             sensor_data = {
