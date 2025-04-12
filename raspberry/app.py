@@ -38,14 +38,18 @@ def get_temp_humidity():
 
 def monitor_sound():
     try:
-        return GPIO.input(SOUND_SENSOR_PIN) == GPIO.HIGH
+        state = GPIO.input(SOUND_SENSOR_PIN)
+        print(f"🎤 Sound Sensor: {'HIGH (Sound Detected)' if state else 'LOW (No Sound)'}")
+        return state == GPIO.HIGH
     except Exception as e:
         print(f"⚠️ Error reading sound sensor: {e}")
         return False
 
 def read_ir_door_status():
     try:
-        return GPIO.input(IR_SENSOR) == GPIO.HIGH  # HIGH = open, LOW = closed
+        state = GPIO.input(IR_SENSOR)
+        print(f"🚪 IR Door Sensor: {'OPEN (HIGH)' if state else 'CLOSED (LOW)'}")
+        return state == GPIO.HIGH
     except Exception as e:
         print(f"⚠️ Error reading IR sensor: {e}")
         return True  # Assume open if error
@@ -57,6 +61,7 @@ def initialize_hx711():
         hx.set_reference_unit(114)
         hx.reset()
         hx.tare()
+        print("⚖️ HX711 initialized")
         return hx
     except Exception as e:
         print(f"⚠️ Error initializing HX711: {e}")
@@ -68,6 +73,7 @@ def get_weight(hx):
         hx.power_down()
         time.sleep(0.1)
         hx.power_up()
+        print(f"⚖️ Weight: {round(weight, 2)} g")
         return round(weight, 2)
     except Exception as e:
         print(f"⚠️ Error reading weight: {e}")
@@ -77,13 +83,13 @@ def send_data_to_api(data):
     try:
         print(f"📤 Sending data: {data}")
         response = requests.post(API_URL, data=data)
-        print(f"✅ Response: {response.status_code} - {response.text}")
+        print(f"✅ API Response: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"⚠️ Error sending data: {e}")
 
 def main():
     setup_gpio()
-    hx = None  # Temporarily disabled
+    hx = initialize_hx711()  # Set to None if you want to disable weight readings
 
     try:
         while True:
@@ -99,13 +105,17 @@ def main():
                 "weight": weight,
                 "distance": 0,
                 "soundStatus": int(sound),
-                "isDoorOpen": int(door_open),  # 1=open, 0=closed
+                "isDoorOpen": int(door_open),
                 "numOfIn": 0,
                 "numOfOut": 0
             }
 
             send_data_to_api(data)
-            time.sleep(25)
+
+            # Monitor sound sensor every second for 25 seconds
+            for _ in range(25):
+                monitor_sound()
+                time.sleep(1)
 
     except KeyboardInterrupt:
         print("🛑 Program stopped by user.")
