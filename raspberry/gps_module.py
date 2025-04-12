@@ -8,16 +8,25 @@ def get_gps_location():
         port = serial.Serial("/dev/serial0", baudrate=9600, timeout=1)
         while True:
             print("Reading GPS data...")
-            data = port.readline().decode("utf-8", errors="ignore")
-            print(f"Raw GPS data: {data.strip()}")
+            data = port.readline().decode("utf-8", errors="ignore").strip()
+            print(f"Raw GPS data: {data}")
             if data.startswith("$GPGGA") or data.startswith("$GPRMC"):
-                print(f"Parsing GPS data: {data.strip()}")
-                msg = pynmea2.parse(data)
-                if hasattr(msg, 'latitude') and hasattr(msg, 'longitude'):
-                    lat = msg.latitude
-                    lon = msg.longitude
-                    print(f"GPS Location: Latitude={lat}, Longitude={lon}")
-                    return lat, lon
+                try:
+                    msg = pynmea2.parse(data)
+                    if hasattr(msg, 'latitude') and hasattr(msg, 'longitude'):
+                        # Check for valid fix
+                        if hasattr(msg, 'status') and msg.status == 'A':  # for GPRMC
+                            print(f"✅ Valid fix (GPRMC)")
+                            print(f"GPS Location: Latitude={msg.latitude}, Longitude={msg.longitude}")
+                            return msg.latitude, msg.longitude
+                        elif hasattr(msg, 'gps_qual') and int(msg.gps_qual) > 0:  # for GPGGA
+                            print(f"✅ Valid fix (GPGGA)")
+                            print(f"GPS Location: Latitude={msg.latitude}, Longitude={msg.longitude}")
+                            return msg.latitude, msg.longitude
+                        else:
+                            print("❌ No fix yet, waiting...")
+                except pynmea2.ParseError:
+                    print("❌ NMEA Parse error")
     except Exception as e:
         print(f"Error reading GPS data: {e}")
         return None, None
@@ -30,7 +39,7 @@ def send_location_to_api(latitude, longitude):
             "longitude": longitude if longitude is not None else 0
         }
         print(f"Sending GPS location: {data}")
-        response = requests.post("http://mybees.aiiot.center/api/check-location/1", data=data)
+        response = requests.post("http://mybees.aiiot.center/api/check-location/1", json=data)
         print(f"Location API Response: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"Error sending location: {e}")
