@@ -48,7 +48,7 @@ def monitor_sound():
 def read_ir_door_status():
     try:
         state = GPIO.input(IR_SENSOR)
-        print(f"🚪 IR Sensor: {'OPEN (HIGH)' if state else 'CLOSED (LOW)'}")
+        print(f"🚪 IR Sensor: {'OPEN (LOW)' if state else 'CLOSED (HIGH)'}")
         return state == GPIO.HIGH
     except Exception as e:
         print(f"⚠️ Error reading IR sensor: {e}")
@@ -90,7 +90,7 @@ def send_data_to_api(data):
 def main():
     setup_gpio()
     # //hx = initialize_hx711()
-
+    print("📡 Starting sensor data collection...")
     try:
         while True:
             temperature, humidity = get_temp_humidity()
@@ -99,9 +99,9 @@ def main():
             # weight = get_weight(hx) if hx else 0
 
             # Get and send GPS location
-            latitude, longitude = get_gps_location()
-            if latitude is not None and longitude is not None:
-                send_location_to_api(latitude, longitude)
+            # latitude, longitude = get_gps_location()
+            # if latitude is not None and longitude is not None:
+            #     send_location_to_api(latitude, longitude)
 
             # Send sensor data
             sensor_data = {
@@ -118,7 +118,7 @@ def main():
 
             send_data_to_api(sensor_data)
             print("🔄 Waiting for next cycle...\n")
-            time.sleep(25)
+            time.sleep(3)
 
     except KeyboardInterrupt:
         print("🛑 Program stopped by user.")
