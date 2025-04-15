@@ -62,10 +62,10 @@ def send_location_to_api(latitude, longitude):
         data = {
             "latitude": latitude if latitude else 0,
             "longitude": longitude if longitude else 0
-        }
+        } 
         print(f"📤 Sending GPS location: {data}")
         response = requests.post(
-            "http://mybees.aiiot.center/api/check-location/1",
+            "http://bees-backend.aiiot.center/api/hives/check-location/1",
             json=data
         )
         print(f"✅ Location API: {response.status_code} - {response.text}")
