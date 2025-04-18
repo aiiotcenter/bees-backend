@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, flash
+from flask import Flask, render_template, request, redirect, flash, jsonify
 import subprocess
 import os
 import logging
@@ -66,6 +66,22 @@ network={{
         flash("Reconfigure failed. Please reboot manually.")
 
     return redirect('/')
+
+# ✅ Manual Hotspot Trigger Endpoint
+@app.route('/start-hotspot', methods=['GET'])
+def start_hotspot():
+    try:
+        logging.info("🛜 Switching to hotspot mode...")
+        os.system("sudo systemctl stop wpa_supplicant")
+        os.system("sudo systemctl disable wpa_supplicant")
+        os.system("sudo systemctl enable hostapd")
+        os.system("sudo systemctl start hostapd")
+        os.system("sudo systemctl enable systemd-networkd")
+        os.system("sudo systemctl start systemd-networkd")
+        return jsonify({"success": True, "message": "Hotspot mode activated"})
+    except Exception as e:
+        logging.error("❌ Hotspot activation failed: %s", e)
+        return jsonify({"success": False, "error": str(e)})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
