@@ -1,12 +1,11 @@
 import requests
 import time
 import RPi.GPIO as GPIO
-from gps_module import get_gps_location, send_location_to_api
-from temperature_humidity import get_temp_humidity
-from sound_sensor import monitor_sound
-from ir_sensor import read_ir_door_status
-from weight_sensor import initialize_hx711, get_weight
-
+from sensors.gps_module import get_gps_location, send_location_to_api
+from sensors.DHT import get_temp_humidity
+from sensors.sound import monitor_sound
+from sensors.ir import read_ir_door_status
+from sensors.weight_sensor import initialize_hx711, get_weight
 # API Endpoint for sensor data
 API_URL = "http://bees-backend.aiiot.center/api/records"
 
