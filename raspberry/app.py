@@ -66,18 +66,22 @@ def initialize_hx711():
     except Exception as e:
         print(f"⚠️ Error initializing HX711: {e}")
         return None
-
-def get_weight(hx):
+def get_weight(hx, samples=10):
     try:
-        weight = hx.get_weight_mean(5)
+        weights = []
+        for _ in range(samples):
+            weights.append(hx.get_weight(1))
+            time.sleep(0.05)
+        average_weight = sum(weights) / len(weights)
         hx.power_down()
         time.sleep(0.1)
         hx.power_up()
-        print(f"⚖️ Weight: {round(weight, 2)} g")
-        return round(weight, 2)
+        print(f"⚖️ Weight: {round(average_weight, 2)} g")
+        return round(average_weight, 2)
     except Exception as e:
         print(f"⚠️ Error reading weight: {e}")
         return 0
+
 
 def send_data_to_api(data):
     try:
@@ -97,7 +101,8 @@ def main():
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            weight = get_weight(hx) if hx else 0
+            weight = get_weight(hx, 10) if hx else 0
+
 
             # Get and send GPS location
             latitude, longitude = get_gps_location()
@@ -109,7 +114,7 @@ def main():
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": 0,
+                "weight": weight,
                 "distance": 0,
                 "soundStatus": int(sound),
                 "isDoorOpen": int(door_open),
