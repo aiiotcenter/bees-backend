@@ -1,11 +1,26 @@
 #!/bin/bash
+# mjpg-streamer + PageKite startup script
 
-# Start mjpg-streamer
-cd ~/mjpg-streamer/mjpg-streamer-experimental
-./mjpg_streamer -i "./input_uvc.so -y -n -f 10 -r 640x480" -o "./output_http.so -w ./www" &
+RESOLUTION="640x480"
+FPS="10"
+PORT="8080"
+PAGEKITE_HOST="beesscamera.pagekite.me"   
+PAGEKITE_SERVICE="8080"               
+ 
 
-# Wait a bit for the stream to start
-sleep 5
 
-# Start PageKite tunnel
-pagekite.py 8080 beesscamera.pagekite.me
+echo "Starting mjpg-streamer on port $PORT at $RESOLUTION $FPS FPS..."
+mjpg_streamer -i "input_uvc.so -r $RESOLUTION -f $FPS" \
+             -o "output_http.so -w /usr/local/share/mjpg-streamer/www -p $PORT" &
+
+
+sleep 2
+
+echo "Starting PageKite tunneling $PAGEKITE_HOST to local port $PAGEKITE_SERVICE..."
+#
+pagekite.py $PAGEKITE_SERVICE $PAGEKITE_HOST &
+
+echo "MJPG-streamer and PageKite are now running in the background."
+
+
+
