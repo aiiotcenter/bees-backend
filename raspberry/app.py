@@ -56,7 +56,7 @@ def read_ir_door_status():
 
 def initialize_hx711():
     try:
-        hx = HX711(16, 20)
+        hx = HX711(3,11)
         hx.set_reading_format("MSB", "MSB")
         hx.set_reference_unit(114)
         hx.reset()
@@ -97,7 +97,7 @@ def main():
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            # weight = get_weight(hx) if hx else 0
+            weight = get_weight(hx) if hx else 0
 
             # Get and send GPS location
             latitude, longitude = get_gps_location()
