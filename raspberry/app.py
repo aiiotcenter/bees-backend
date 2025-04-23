@@ -13,6 +13,10 @@ def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
+    
+    # Setup GPIO pins for sensors
+    GPIO.setup(7, GPIO.IN)  # Sound sensor
+    GPIO.setup(9, GPIO.IN)  # IR sensor
 
 def cleanup_gpio():
     print("🧼 Cleaning up GPIO...")
