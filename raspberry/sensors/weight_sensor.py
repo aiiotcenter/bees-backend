@@ -1,5 +1,5 @@
 import time
-from raspberry.sensors.hx711 import HX711
+from sensors.hx711 import HX711
 
 def initialize_hx711():
     try:
