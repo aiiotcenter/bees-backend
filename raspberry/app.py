@@ -32,7 +32,7 @@ def send_data_to_api(data):
 
 def main():
     setup_gpio()
-    # hx = initialize_hx711()
+    hx = initialize_hx711()
     print("📡 Starting sensor data collection...")
 
     try:
@@ -40,7 +40,7 @@ def main():
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            # weight = get_weight(hx, 10) if hx else 0
+            weight = get_weight(hx, 10) if hx else 0
 
             # Get and send GPS location
             latitude, longitude = get_gps_location()
@@ -52,7 +52,7 @@ def main():
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": 0,
+                "weight": weight,
                 "distance": 0,
                 "soundStatus": 1,
                 "isDoorOpen": int(door_open),
