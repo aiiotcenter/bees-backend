@@ -55,7 +55,8 @@ def main():
                 "weight": 0,
                 "distance": 0,
                 "soundStatus": 1,
-                "isDoorOpen": int(door_open),
+               "isDoorOpen": door_open,
+
                 "numOfIn": 0,
                 "numOfOut": 0
             }
