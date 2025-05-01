@@ -1,5 +1,5 @@
 import time
-from sensors.gps_module import get_gps_location  # Assuming you have this method already
+from gps_module import get_gps_location  # Assuming you have this method already
 
 def initialize_gps():
     try:
