@@ -40,12 +40,12 @@ def main():
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            # weight = get_weight(hx, 10) if hx else 0
+            weight = get_weight(hx, 10) if hx else 0
 
             # Get and send GPS location
-            # latitude, longitude = get_gps_location()
-            # if latitude is not None and longitude is not None:
-            #     send_location_to_api(latitude, longitude)
+            latitude, longitude = get_gps_location()
+            if latitude is not None and longitude is not None:
+                send_location_to_api(latitude, longitude)
 
             # Send sensor data
             sensor_data = {
