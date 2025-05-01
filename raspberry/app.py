@@ -32,8 +32,8 @@ def send_data_to_api(data):
 
 def main():
     setup_gpio()
-    hx = initialize_hx711()
-    print("📡 Starting sensor data collection...")
+    # hx = initialize_hx711()
+    # print("📡 Starting sensor data collection...")
 
     try:
         while True:
