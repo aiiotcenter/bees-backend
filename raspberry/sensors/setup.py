@@ -7,3 +7,4 @@ setup(
     py_modules=['hx711'],
     install_requires=['Rpi.GPIO'],
 )
+
