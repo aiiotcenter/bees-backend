@@ -40,7 +40,7 @@ def main():
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            weight = get_weight(hx, 10) if hx else 0
+            # weight = get_weight(hx, 10) if hx else 0
 
             # Get and send GPS location
             latitude, longitude = get_gps_location()
