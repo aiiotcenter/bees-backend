@@ -44,6 +44,11 @@ class Scale:
             except ValueError:
                 print("Invalid input. Try again.")
 
+        if not self.hx.wait_ready(timeout=5):
+            print("[ERROR] HX711 not ready during calibration. Check wiring and power.")
+            GPIO.cleanup()
+            raise RuntimeError("HX711 not responding during calibration.")
+
         raw_val = self.hx.get_weight(5)
         self.calibration_factor = raw_val / known_weight
         print(f"[INFO] Calibration complete. Calibration factor: {self.calibration_factor:.2f}")
