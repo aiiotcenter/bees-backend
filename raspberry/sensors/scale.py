@@ -60,3 +60,22 @@ class Scale:
 
     def cleanup(self):
         GPIO.cleanup()
+# At the end of your file
+if __name__ == "__main__":
+    import time
+    try:
+        scale = Scale()
+        scale.tare()
+
+        if scale.calibration_factor is None:
+            scale.calibrate()
+
+        print("[INFO] Starting standalone weight readings. Press Ctrl+C to stop.")
+        while True:
+            weight = scale.get_weight()
+            print(f"[WEIGHT] {weight:.2f} g")
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\n[INFO] Exiting standalone scale mode.")
+        scale.cleanup()
