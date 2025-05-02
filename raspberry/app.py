@@ -6,6 +6,7 @@ from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 from sensors.weight_sensor import initialize_hx711, get_weight
+
 # API Endpoint for sensor data
 API_URL = "http://bees-backend.aiiot.center/api/records"
 
@@ -13,8 +14,7 @@ def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    
-    # Setup GPIO pins for sensors
+
     GPIO.setup(7, GPIO.IN)  # Sound sensor
     GPIO.setup(9, GPIO.IN)  # IR sensor
 
@@ -32,29 +32,27 @@ def send_data_to_api(data):
 
 def main():
     setup_gpio()
-    # hx = initialize_hx711()
-    # print("📡 Starting sensor data collection...")
+    initialize_hx711()  # ✅ Initialize scale
 
     try:
         while True:
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            # weight = get_weight(hx, 10) if hx else 0
+            weight = get_weight()  # ✅ Get weight from load cell
 
-            # Get and send GPS location
             latitude, longitude = get_gps_location()
             if latitude is not None and longitude is not None:
                 send_location_to_api(latitude, longitude)
 
-            # Send sensor data
+            # Compose sensor data payload
             sensor_data = {
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": 0,
+                "weight": weight,
                 "distance": 0,
-                "soundStatus": 1,
+                "soundStatus": int(sound),
                 "isDoorOpen": int(door_open),
                 "numOfIn": 0,
                 "numOfOut": 0
