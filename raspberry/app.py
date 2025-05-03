@@ -5,7 +5,7 @@ from sensors.gps_module import get_gps_location, send_location_to_api
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
-from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, get_weight
+from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, get_weight, hx
 
 
 # API Endpoint for sensor data
@@ -33,21 +33,32 @@ def send_data_to_api(data):
 
 def main():
     setup_gpio()
-    tare()  # Perform tare when the program starts
-
+    
+    # Initialize HX711 and tare the scale
+    hx.reset()
+    tare()
+    
+    # Load or calibrate the weight sensor
     cal_factor = load_calibration()
     if cal_factor is None:
-        cal_factor = calibrate()  # Calibrate if no calibration factor is found
-    print(f"[INFO] Calibration factor: {cal_factor:.2f}")
+        cal_factor = calibrate()
+    else:
+        print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
     
+    hx.set_reference_unit(cal_factor)
+
     try:
         while True:
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            weight = get_weight()  # Get the weight once per loop
+            
+            # Get weight reading
+            weight = hx.get_weight(5)  # Get the last weight reading
+            print(f"[WEIGHT] {weight:.2f} g")
+            hx.power_down()
+            hx.power_up()
 
-            # Get the GPS location
             latitude, longitude = get_gps_location()
             if latitude is not None and longitude is not None:
                 send_location_to_api(latitude, longitude)
@@ -57,7 +68,7 @@ def main():
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": weight,  # Add the weight value here
+                "weight": weight,
                 "distance": 0,
                 "soundStatus": int(sound),
                 "isDoorOpen": int(door_open),
