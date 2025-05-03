@@ -45,7 +45,7 @@ def main():
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            weight = get_weight()  # Get the weight
+            weight = get_weight()  # Get the weight once per loop
 
             # Get the GPS location
             latitude, longitude = get_gps_location()

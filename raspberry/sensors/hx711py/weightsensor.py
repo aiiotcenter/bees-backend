@@ -1,10 +1,5 @@
 import time
-import sys
-import os  # Add this import
-import RPi.GPIO as GPIO
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from hx711 import HX711
-# Corrected import to reflect your folder structure
+from hx711py.hx711 import HX711  # Ensure HX711 is correctly imported
 
 # Pin configuration (adjust if using different GPIOs)
 DT = 3    # HX711 Data pin (DOUT)
@@ -50,41 +45,16 @@ def load_calibration():
     try:
         with open("calibration.txt", "r") as f:
             return float(f.read().strip())
-    except FileNotFoundError:
-        print("[WARN] Calibration file not found. Calibration required.")
-        return None
-    except ValueError:
-        print("[ERROR] Calibration file is corrupted.")
+    except:
         return None
 
-# Setup code
-hx.reset()
-tare()
-cal_factor = load_calibration()
-
-if cal_factor is None:
-    cal_factor = calibrate()
-else:
-    print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
-
-hx.set_reference_unit(cal_factor)
-
-# Start weight readings
-print("[INFO] Starting weight readings. Press Ctrl+C to stop.")
-try:
-    while True:
-        weight = hx.get_weight(5)
-        print(f"[WEIGHT] {weight:.2f} g")
-        time.sleep(1)
-        hx.power_down()
-        hx.power_up()
-
-except KeyboardInterrupt:
-    print("\n[INFO] Program interrupted by user. Cleaning up...")
-    GPIO.cleanup()
-    sys.exit()
-
-except (SystemExit, Exception) as e:
-    print(f"[ERROR] An unexpected error occurred: {e}")
-    GPIO.cleanup()
-    sys.exit()
+# Read the weight (average of multiple readings)
+def get_weight(num_samples=5):
+    try:
+        # Get average weight from multiple samples
+        weights = [hx.get_weight(5) for _ in range(num_samples)]
+        avg_weight = sum(weights) / len(weights)  # Take the average to reduce noise
+        return avg_weight
+    except Exception as e:
+        print(f"⚠️ Error reading weight: {e}")
+        return None
