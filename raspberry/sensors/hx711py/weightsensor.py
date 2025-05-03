@@ -1,6 +1,7 @@
 import time
 import sys
 import RPi.GPIO as GPIO
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from hx711 import HX711
 # Corrected import to reflect your folder structure
 
