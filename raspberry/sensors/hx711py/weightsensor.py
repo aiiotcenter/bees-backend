@@ -1,11 +1,11 @@
 import time
 import sys
 import RPi.GPIO as GPIO
-from hx711 import HX711  # Make sure the HX711 library is available in the same directory or installed.
+from hx711py.hx711 import HX711  # Corrected import to reflect your folder structure
 
 # Pin configuration (adjust if using different GPIOs)
-DT =3    # HX711 Data pin (DOUT)
-SCK =11  # HX711 Clock pin (SCK)
+DT = 3    # HX711 Data pin (DOUT)
+SCK = 11  # HX711 Clock pin (SCK)
 
 # Initialize HX711
 hx = HX711(DT, SCK)
@@ -50,29 +50,28 @@ def load_calibration():
     except:
         return None
 
-# # Main
-# if __name__ == "__main__":
-#     try:
-#         hx.reset()
-#         tare()
-#         cal_factor = load_calibration()
+# Setup code
+hx.reset()
+tare()
+cal_factor = load_calibration()
 
-#         if cal_factor is None:
-#             cal_factor = calibrate()
-#         else:
-#             print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
+if cal_factor is None:
+    cal_factor = calibrate()
+else:
+    print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
 
-#         hx.set_reference_unit(cal_factor)
+hx.set_reference_unit(cal_factor)
 
-#         print("[INFO] Starting weight readings. Press Ctrl+C to stop.")
-#         while True:
-#             weight = hx.get_weight(5)
-#             print(f"[WEIGHT] {weight:.2f} g")
-#             time.sleep(1)
-#             hx.power_down()
-#             hx.power_up()
-
-#     except (KeyboardInterrupt, SystemExit):
-#         print("\n[INFO] Exiting...")
-#         GPIO.cleanup()
-#         sys.exit()
+# Start weight readings
+print("[INFO] Starting weight readings. Press Ctrl+C to stop.")
+try:
+    while True:
+        weight = hx.get_weight(5)
+        print(f"[WEIGHT] {weight:.2f} g")
+        time.sleep(1)
+        hx.power_down()
+        hx.power_up()
+except (KeyboardInterrupt, SystemExit):
+    print("\n[INFO] Exiting...")
+    GPIO.cleanup()
+    sys.exit()
