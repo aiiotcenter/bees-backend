@@ -47,7 +47,11 @@ def load_calibration():
     try:
         with open("calibration.txt", "r") as f:
             return float(f.read().strip())
-    except:
+    except FileNotFoundError:
+        print("[WARN] Calibration file not found. Calibration required.")
+        return None
+    except ValueError:
+        print("[ERROR] Calibration file is corrupted.")
         return None
 
 # Setup code
@@ -71,7 +75,13 @@ try:
         time.sleep(1)
         hx.power_down()
         hx.power_up()
-except (KeyboardInterrupt, SystemExit):
-    print("\n[INFO] Exiting...")
+
+except KeyboardInterrupt:
+    print("\n[INFO] Program interrupted by user. Cleaning up...")
+    GPIO.cleanup()
+    sys.exit()
+
+except (SystemExit, Exception) as e:
+    print(f"[ERROR] An unexpected error occurred: {e}")
     GPIO.cleanup()
     sys.exit()
