@@ -5,7 +5,7 @@ from sensors.gps_module import get_gps_location, send_location_to_api
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
-from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, hx
+from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, get_weight
 
 
 # API Endpoint for sensor data
@@ -33,15 +33,21 @@ def send_data_to_api(data):
 
 def main():
     setup_gpio()
-    initialize_hx711()  
+    tare()  # Perform tare when the program starts
 
+    cal_factor = load_calibration()
+    if cal_factor is None:
+        cal_factor = calibrate()  # Calibrate if no calibration factor is found
+    print(f"[INFO] Calibration factor: {cal_factor:.2f}")
+    
     try:
         while True:
             temperature, humidity = get_temp_humidity()
             sound = monitor_sound()
             door_open = read_ir_door_status()
-            weight = get_weight()  
+            weight = get_weight()  # Get the weight
 
+            # Get the GPS location
             latitude, longitude = get_gps_location()
             if latitude is not None and longitude is not None:
                 send_location_to_api(latitude, longitude)
@@ -51,7 +57,7 @@ def main():
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": weight,
+                "weight": weight,  # Add the weight value here
                 "distance": 0,
                 "soundStatus": int(sound),
                 "isDoorOpen": int(door_open),
