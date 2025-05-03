@@ -1,12 +1,11 @@
 import time
 import sys
 import RPi.GPIO as GPIO
-from hx711py.hx711 import HX711
-  # Corrected import to reflect your folder structure
+from hx711 import HX711  # Make sure the HX711 library is available in the same directory or installed.
 
 # Pin configuration (adjust if using different GPIOs)
-DT = 3    # HX711 Data pin (DOUT)
-SCK = 11  # HX711 Clock pin (SCK)
+DT =3    # HX711 Data pin (DOUT)
+SCK =11  # HX711 Clock pin (SCK)
 
 # Initialize HX711
 hx = HX711(DT, SCK)
