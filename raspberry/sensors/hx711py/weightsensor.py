@@ -50,14 +50,12 @@ def load_calibration():
             return float(f.read().strip())
     except:
         return None
-
-# Read the weight (average of multiple readings)
-def get_weight(num_samples=5):
+    
+def get_weight():
     try:
-        # Get average weight from multiple samples
-        weights = [hx.get_weight(5) for _ in range(num_samples)]
-        avg_weight = sum(weights) / len(weights)  # Take the average to reduce noise
-        return avg_weight
+        # Get the last weight reading
+        weight = hx.get_weight(5)  # Read weight with 5 samples for stability
+        return weight
     except Exception as e:
         print(f"⚠️ Error reading weight: {e}")
         return None
