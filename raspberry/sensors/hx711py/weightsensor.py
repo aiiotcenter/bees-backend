@@ -1,6 +1,9 @@
 import time
+import RPi.GPIO as GPIO
+import sys
+import os  # Add this import
 from hx711py.hx711 import HX711  # Ensure HX711 is correctly imported
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Pin configuration (adjust if using different GPIOs)
 DT = 3    # HX711 Data pin (DOUT)
 SCK = 11  # HX711 Clock pin (SCK)
