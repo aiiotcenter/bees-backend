@@ -54,8 +54,12 @@ def main():
             door_open = read_ir_door_status()
             
             # Get weight reading
-            weight = hx.get_weight(5)  # Get the last weight reading
-            print(f"[WEIGHT] {weight:.2f} g")
+            weight = get_weight()  # Use the function from weightsensor.py
+            if weight is not None:
+                print(f"[WEIGHT] {weight:.2f} g")
+            else:
+                print("⚠️ Failed to read weight.")
+
             hx.power_down()
             hx.power_up()
 

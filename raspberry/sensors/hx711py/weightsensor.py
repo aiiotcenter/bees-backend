@@ -50,6 +50,18 @@ def load_calibration():
     except:
         return None
 
+# Get weight function
+def get_weight():
+    try:
+        # Get the last weight reading
+        weight = hx.get_weight(5)  # Read weight with 5 samples for stability
+        hx.power_down()
+        hx.power_up()
+        return weight
+    except Exception as e:
+        print(f"⚠️ Error reading weight: {e}")
+        return None
+
 # Main
 if __name__ == "__main__":
     try:
@@ -66,11 +78,10 @@ if __name__ == "__main__":
 
         print("[INFO] Starting weight readings. Press Ctrl+C to stop.")
         while True:
-            weight = hx.get_weight(5)
-            print(f"[WEIGHT] {weight:.2f} g")
+            weight = get_weight()
+            if weight is not None:
+                print(f"[WEIGHT] {weight:.2f} g")
             time.sleep(1)
-            hx.power_down()
-            hx.power_up()
 
     except (KeyboardInterrupt, SystemExit):
         print("\n[INFO] Exiting...")
