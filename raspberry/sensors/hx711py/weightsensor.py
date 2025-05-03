@@ -1,9 +1,9 @@
 import time
-import RPi.GPIO as GPIO
 import sys
-import os  # Add this import
-from .hx711 import HX711 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import RPi.GPIO as GPIO
+from hx711py.hx711 import HX711
+  # Corrected import to reflect your folder structure
+
 # Pin configuration (adjust if using different GPIOs)
 DT = 3    # HX711 Data pin (DOUT)
 SCK = 11  # HX711 Clock pin (SCK)
@@ -50,12 +50,30 @@ def load_calibration():
             return float(f.read().strip())
     except:
         return None
-    
-def get_weight():
+
+# Main
+if __name__ == "__main__":
     try:
-        # Get the last weight reading
-        weight = hx.get_weight(5)  # Read weight with 5 samples for stability
-        return weight
-    except Exception as e:
-        print(f"⚠️ Error reading weight: {e}")
-        return None
+        hx.reset()
+        tare()
+        cal_factor = load_calibration()
+
+        if cal_factor is None:
+            cal_factor = calibrate()
+        else:
+            print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
+
+        hx.set_reference_unit(cal_factor)
+
+        print("[INFO] Starting weight readings. Press Ctrl+C to stop.")
+        while True:
+            weight = hx.get_weight(5)
+            print(f"[WEIGHT] {weight:.2f} g")
+            time.sleep(1)
+            hx.power_down()
+            hx.power_up()
+
+    except (KeyboardInterrupt, SystemExit):
+        print("\n[INFO] Exiting...")
+        GPIO.cleanup()
+        sys.exit()
