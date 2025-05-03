@@ -74,7 +74,7 @@ def main():
                 "humidity": humidity,
                 "weight": weight,
                 "distance": 0,
-                "soundStatus": int(sound),
+                "soundStatus": 1,
                 "isDoorOpen": int(door_open),
                 "numOfIn": 0,
                 "numOfOut": 0
