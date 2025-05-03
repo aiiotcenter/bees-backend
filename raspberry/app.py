@@ -6,7 +6,7 @@ from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, hx
-from hx711py.hx711 import HX711
+
 
 # API Endpoint for sensor data
 API_URL = "http://bees-backend.aiiot.center/api/records"
