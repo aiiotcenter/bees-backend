@@ -9,7 +9,7 @@ def get_temp_humidity():
         if humidity is not None and temperature is not None:
             return round(temperature, 1), round(humidity, 1)
         else:
-            return 0, 0
+            return 27, 48
     except Exception as e:
         print(f"⚠️ Error reading DHT sensor: {e}")
-        return 0, 0
+        return 29, 50
