@@ -1,18 +1,15 @@
 #!/bin/bash
-cd /home/pi/bees-backend/raspberry
 
 # Activate virtual environment
+cd /home/pi/bees-backend/raspberry
 source venv/bin/activate
 
-# Run your main app (in background)
-python app.py &
+# Start app and camera streamer, logging output
+LOGFILE="/home/pi/bees-backend/raspberry/logs/bees.log"
+mkdir -p logs
+echo "[START] $(date)" >> "$LOGFILE"
+python app.py >> "$LOGFILE" 2>&1 &
+./stream_tunnel.sh >> "$LOGFILE" 2>&1 &
 
-# Start the stream and tunnel
-./stream_tunnel.sh &
-
-
-# sudo systemctl daemon-reload
-# sudo systemctl enable bees-camera
-# sudo systemctl start bees-camera
-# sudo systemctl status bees-camera
-# journalctl -u bees-camera -f
+# Keep script running so systemd stays active
+wait
