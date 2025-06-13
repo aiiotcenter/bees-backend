@@ -1,0 +1,6 @@
+requests
+RPi.GPIO
+Adafruit_DHT
+pynmea2
+pyserial
+setuptools
