@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Activate virtual environment
-cd /home/pi/bees-backend/raspberry
+cd /home/pi/
 source venv/bin/activate
 
 # Start app and camera streamer, logging output
