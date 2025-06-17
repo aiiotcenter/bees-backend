@@ -1,41 +1,54 @@
-
-
 set -euo pipefail
 
 BUILD_DIR="/home/pi/mjpg-streamer/mjpg-streamer-experimental/_build"
 WWW_DIR="${BUILD_DIR}/../www"
+LD_PATH="${BUILD_DIR}/plugins/input_libcamera:${BUILD_DIR}/plugins/output_http"
 
-export LD_LIBRARY_PATH="${BUILD_DIR}/plugins/input_libcamera:${BUILD_DIR}/plugins/output_http"
+STREAM_CMD="${BUILD_DIR}/mjpg_streamer -i \"input_libcamera.so --resolution 640x480 --fps 10 --buffercount 3\" -o \"output_http.so -p 8080 -w ${WWW_DIR}\""
+TUNNEL_CMD="lt --port 8080 --subdomain camera --local-host 127.0.0.1"
 
-# ----- Clean up any previous instances --------------------------------------
-echo "[INFO] Stopping any running camera/tunnel processes…"
-sudo pkill -9 -f libcamera  || true
-sudo pkill -9 mjpg_streamer || true
-sudo pkill -9 -f "lt --port 8080" || true
-sleep 1
+log() { printf '[%(%Y-%m-%d %H:%M:%S)T] %s\n' -1 "$*"; }
 
-# ----- Start mjpg‑streamer ----------------------------------------------------
-echo "[INFO] Starting mjpg-streamer…"
-${BUILD_DIR}/mjpg_streamer \
-  -i "input_libcamera.so --resolution 640x480 --fps 10 --buffercount 3" \
-  -o "output_http.so   -p 8080 -w ${WWW_DIR}" &
-STREAMER_PID=$!
+cleanup() {
+  log "Stopping …"
+  pkill -9 -f "${STREAM_CMD%% *}" 2>/dev/null || true
+  pkill -9 -f "${TUNNEL_CMD%% *}" 2>/dev/null || true
+  exit 0
+}
+trap cleanup SIGINT SIGTERM
 
-# Give streamer a moment to initialise
-sleep 3
+log "Killing any stale processes …"
+# (Use sudo if the old processes were started as root.)
+sudo pkill -9 -f libcamera          2>/dev/null || true
+sudo pkill -9 -f "${STREAM_CMD%% *}" 2>/dev/null || true
+sudo pkill -9 -f "${TUNNEL_CMD%% *}" 2>/dev/null || true
 
-# ----- Start LocalTunnel ------------------------------------------------------
-echo "[INFO] Starting LocalTunnel on sub‑domain camera…"
-lt --port 8080 --subdomain camera --local-host 127.0.0.1 &
-LT_PID=$!
+export LD_LIBRARY_PATH="${LD_PATH}"
 
-# -----------------------------------------------------------------------------
-echo "[INFO] mjpg-streamer PID : ${STREAMER_PID}"
-echo "[INFO] LocalTunnel PID  : ${LT_PID}"
-echo "[READY] Stream available locally  at  http://localhost:8080/?action=stream"
-echo "[READY] Public link (via LT) at  http://camera.loca.lt/?action=stream"
+while true; do
+  log "Starting mjpg-streamer …"
+  bash -c "${STREAM_CMD}" &
+  STREAM_PID=$!
 
-echo "Press Ctrl‑C to stop both processes."
+  # Wait a bit; if streamer dies immediately (e.g. ENOMEM), loop again.
+  sleep 3
+  if ! kill -0 ${STREAM_PID} 2>/dev/null; then
+    log "mjpg-streamer exited early; retrying in 5 s …"
+    sleep 5
+    continue
+  fi
 
-# Wait on background jobs so Ctrl‑C stops everything
-wait
+  log "Opening LocalTunnel …"
+  bash -c "${TUNNEL_CMD}" &
+  LT_PID=$!
+
+  log "LOCAL  : http://localhost:8080/?action=stream"
+  log "PUBLIC : http://camera.loca.lt/?action=stream"
+
+  # Wait until mjpg-streamer dies; then kill tunnel and restart loop.
+  wait ${STREAM_PID}
+  log "mjpg-streamer exited (code=$?).  Restarting in 5 s …"
+  kill ${LT_PID} 2>/dev/null || true
+  sleep 5
+
+done
