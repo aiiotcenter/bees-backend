@@ -1,13 +1,4 @@
-#!/usr/bin/env bash
-# ------------------------------------------------------------------
-# stream_kite.sh – start mjpg-streamer (libcamera) + PageKite tunnel
-# ------------------------------------------------------------------
-#  ▸ Exposes http://<KITE_NAME>.pagekite.me/?action=stream
-#  ▸ Restarts automatically if either process crashes
-# ------------------------------------------------------------------
 
-set -eEuo pipefail
-if (( EUID != 0 )); then exec sudo "$0" "$@"; fi   # re-exec as root
 
 # ──── USER SETTINGS ───────────────────────────────────────────────
 KITE_NAME="beesscamera"          # your sub-domain on PageKite.net
