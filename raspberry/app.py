@@ -47,15 +47,6 @@ def main():
             sound = monitor_sound()
             door_open = read_ir_door_status()
             
-            # Get weight reading
-            weight = get_weight()  # Use the function from weightsensor.py
-            if weight is not None:
-                print(f"[WEIGHT] {weight:.2f} g")
-            else:
-                print("⚠️ Failed to read weight.")
-
-            hx.power_down()
-            hx.power_up()
 
             latitude, longitude = get_gps_location()
             if latitude is not None and longitude is not None:
