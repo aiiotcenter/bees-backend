@@ -18,8 +18,11 @@ STREAM_CMD=( "${BUILD_DIR}/mjpg_streamer"
              -i "input_libcamera.so --resolution 640x480 --fps 10"
              -o "output_http.so -p 8080 -w ${WWW_DIR}" )
 
-KITE_NAME="beesscamera"                     # <subdomain>.pagekite.me
+KITE_NAME="beesscamera.pagekite.me"                 # <subdomain>.pagekite.me
+
 TUNNEL_CMD=( /usr/bin/pagekite 8080 "${KITE_NAME}" )
+
+
 
 # ─── helpers ──────────────────────────────────────────────────────
 log() { printf '[%(%F %T)T] %s\n' -1 "$*"; }
