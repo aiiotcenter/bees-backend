@@ -33,11 +33,7 @@ def send_data_to_api(data):
 
 def main():
     setup_gpio()
-    
-    # Initialize HX711 and tare the scale
-    hx.reset()
-    tare()
-    
+ 
     # Load or calibrate the weight sensor
     cal_factor = load_calibration()
     if cal_factor is None:
@@ -45,8 +41,6 @@ def main():
     else:
         print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
     
-    hx.set_reference_unit(cal_factor)
-
     try:
         while True:
             temperature, humidity = get_temp_humidity()
@@ -72,7 +66,7 @@ def main():
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": weight,
+                "weight": 10800,
                 "distance": 0,
                 "soundStatus": 1,
                 "isDoorOpen": int(door_open),
