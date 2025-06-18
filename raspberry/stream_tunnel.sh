@@ -4,6 +4,10 @@
 # ------------------------------------------------------------------
 
 # ---- paths -------------------------------------------------------
+if (( EUID != 0 )); then          # not root? – re-run with sudo
+  exec sudo "$0" "$@"
+fi
+
 BUILD_DIR="/home/pi/mjpg-streamer/mjpg-streamer-experimental/_build"
 WWW_DIR="${BUILD_DIR}/../www"
 export LD_LIBRARY_PATH="${BUILD_DIR}/plugins/input_libcamera:${BUILD_DIR}/plugins/output_http"
