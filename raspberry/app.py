@@ -82,7 +82,7 @@ def main():
 
             send_data_to_api(sensor_data)
             print("🔄 Waiting for next cycle...\n")
-            time.sleep(20)
+            time.sleep(60)
 
     except KeyboardInterrupt:
         print("🛑 Program stopped by user.")
