@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ------------------------------------------------------------------
-# stream_tunnel.sh – start mjpg-streamer (stable build) + PageKite
+# stream_tunnel.sh – start libcamera -> ffmpeg -> mjpg-streamer + PageKite
 # ------------------------------------------------------------------
 
 set -eEuo pipefail
@@ -9,51 +9,61 @@ set -eEuo pipefail
 (( EUID != 0 )) && exec sudo "$0" "$@"
 
 # ─── paths ───────────────────────────────────────────────────────
-BIN="/usr/local/bin/mjpg_streamer"                # working binary
-PLUG_DIR="/usr/local/lib/mjpg-streamer"           # after ‘sudo make install’
+BIN="/usr/local/bin/mjpg_streamer"
+PLUG_DIR="/usr/local/lib/mjpg-streamer"
 WWW_DIR="/home/pi/mjpg-streamer/mjpg-streamer-experimental/www"
-
 LOG_DIR="/home/pi/bees-backend/raspberry/logs"
 mkdir -p "$LOG_DIR"
 exec >>"$LOG_DIR/stream.log" 2>&1
 
 export LD_LIBRARY_PATH="$PLUG_DIR"
 
-# ─── commands ────────────────────────────────────────────────────
-STREAM_CMD=(
-  "$BIN"
-  -i "input_libcamera.so --width 640 --height 480 --framerate 25"
-  -o "output_http.so   -p 8080 -w $WWW_DIR"
-)
+# ─── virtual camera setup ────────────────────────────────────────
+if ! ls /dev/video10 &>/dev/null; then
+  echo "[INFO] Creating virtual camera on /dev/video10"
+  modprobe v4l2loopback devices=1 video_nr=10 card_label="VirtualCam" exclusive_caps=1
+  sleep 2
+fi
 
-KITE_HOST="beesscamera.pagekite.me"
-TUNNEL_CMD=( /usr/bin/pagekite 8080 "$KITE_HOST" )
-
-# ─── cleanup handler ─────────────────────────────────────────────
+# ─── cleanup ─────────────────────────────────────────────────────
 cleanup() {
-  echo "[INFO] Stopping mjpg-streamer and PageKite …"
-  pkill -TERM -x mjpg_streamer 2>/dev/null || true
-  pkill -TERM -f /usr/bin/pagekite 2>/dev/null || true
+  echo "[INFO] Stopping all processes …"
+  pkill -TERM -f libcamera-vid || true
+  pkill -TERM -f ffmpeg || true
+  pkill -TERM -x mjpg_streamer || true
+  pkill -TERM -f /usr/bin/pagekite || true
 }
 trap cleanup SIGINT SIGTERM EXIT
 
-# ─── launch streamer ─────────────────────────────────────────────
-echo "[INFO] Starting mjpg-streamer  → http://localhost:8080"
-"${STREAM_CMD[@]}" &
-STREAM_PID=$!
+# ─── start libcamera → ffmpeg → /dev/video10 ─────────────────────
+echo "[INFO] Starting libcamera streaming to virtual camera"
+/usr/bin/libcamera-vid -t 0 --width 640 --height 480 --framerate 25 --codec yuv420 --output - | \
+/usr/bin/ffmpeg -f rawvideo -pix_fmt yuv420p -s 640x480 -r 25 -i - \
+  -c:v mjpeg -f v4l2 /dev/video10 &
+STREAM_BRIDGE_PID=$!
 
 sleep 3
-if ! kill -0 "$STREAM_PID" 2>/dev/null; then
+
+# ─── start mjpg-streamer on virtual camera ───────────────────────
+echo "[INFO] Starting mjpg-streamer → http://localhost:8080"
+"$BIN" \
+  -i "input_uvc.so -d /dev/video10 -r 640x480 -f 25" \
+  -o "output_http.so -p 8080 -w $WWW_DIR" &
+MJPG_PID=$!
+
+sleep 3
+if ! kill -0 "$MJPG_PID" 2>/dev/null; then
   echo "[ERROR] mjpg-streamer died on startup; aborting so systemd can retry."
   exit 1
 fi
 
-# ─── launch tunnel ───────────────────────────────────────────────
+# ─── start PageKite tunnel ───────────────────────────────────────
+KITE_HOST="beesscamera.pagekite.me"
 echo "[INFO] Opening PageKite       → http://$KITE_HOST/?action=stream"
-"${TUNNEL_CMD[@]}" &
+/usr/bin/pagekite 8080 "$KITE_HOST" &
 KITE_PID=$!
 
-# ─── wait for either process to exit ─────────────────────────────
-wait -n "$STREAM_PID" "$KITE_PID"
+# ─── wait for any process to die ─────────────────────────────────
+wait -n "$STREAM_BRIDGE_PID" "$MJPG_PID" "$KITE_PID"
 echo "[WARN] One of the services exited – letting systemd restart us."
-exit 1        # non-zero so systemd’s Restart=on-failure kicks in
+exit 1  # systemd will restart on non-zero
