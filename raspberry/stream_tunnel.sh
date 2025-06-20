@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # stream_tunnel.sh – start MJPG-streamer with libcamera + PageKite
-# Kill any leftover camera processes to free the device
-pkill -f libcamera-vid    || true
-pkill -f mjpg_streamer    || true
-pkill -f input_libcamera  || true
-sleep 2
 
 set -eEuo pipefail
-(( EUID != 0 )) && exec sudo "$0" "$@"
 
-# Log to a world-writable location
+# Kill any leftover camera users so libcamera is free
+pkill -f libcamera-vid   || true
+pkill -f mjpg_streamer   || true
+pkill -f input_libcamera || true
+sleep 2
+
+# Log everything here (world-writable file)
 LOGFILE=/var/log/bees-stream.log
 exec >>"$LOGFILE" 2>&1
 
 echo "[INFO] ==== STREAM TUNNEL STARTING ===="
 
-# 1) MJPG-streamer using libcamera input plugin
+# 1) MJPG-streamer w/ libcamera input plugin
 echo "[INFO] Starting MJPG-streamer (libcamera) → http://localhost:8080"
 export LD_LIBRARY_PATH=/usr/local/lib/mjpg-streamer
 mjpg_streamer \
