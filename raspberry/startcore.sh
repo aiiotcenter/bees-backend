@@ -16,5 +16,3 @@ source "${VENV_DIR}/bin/activate"
 PYTHONPATH="${BASE_DIR}/sensors/hx711py" \
 python "${BASE_DIR}/app.py" >> "${LOGFILE}" 2>&1 &
 
-# now replace the shell with stream_tunnel.sh  (NO trailing &)
-exec "${BASE_DIR}/stream_tunnel.sh" >> "${LOGFILE}" 2>&1
