@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 # stream_tunnel.sh – start MJPG-streamer with libcamera + PageKite
+# Kill any leftover camera processes to free the device
+pkill -f libcamera-vid    || true
+pkill -f mjpg_streamer    || true
+pkill -f input_libcamera  || true
+sleep 2
+
 set -eEuo pipefail
 (( EUID != 0 )) && exec sudo "$0" "$@"
 
-LOG_DIR=/home/pi/bees-backend/raspberry/logs
-WWW_DIR=/home/pi/mjpg-streamer/mjpg-streamer-experimental/www
-
-mkdir -p "$LOG_DIR"
-exec >>"$LOG_DIR/stream.log" 2>&1
+# Log to a world-writable location
+LOGFILE=/var/log/bees-stream.log
+exec >>"$LOGFILE" 2>&1
 
 echo "[INFO] ==== STREAM TUNNEL STARTING ===="
 
-# 1) MJPG-streamer w/ libcamera input
+# 1) MJPG-streamer using libcamera input plugin
 echo "[INFO] Starting MJPG-streamer (libcamera) → http://localhost:8080"
 export LD_LIBRARY_PATH=/usr/local/lib/mjpg-streamer
 mjpg_streamer \
-  -i "input_libcamera.so --width 640 --height 480 --framerate 25" \
-  -o "output_http.so -p 8080 -w $WWW_DIR" &
+  -i "input_libcamera.so --resolution 640x480 --fps 25" \
+  -o "output_http.so -p 8080 -w /home/pi/mjpg-streamer/mjpg-streamer-experimental/www" &
 MJPG_PID=$!
 
 sleep 3
@@ -37,7 +41,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# 4) Wait
+# 4) Wait for any to exit
 wait -n "$MJPG_PID" "$KITE_PID"
 echo "[WARN] One component exited, triggering restart"
 exit 1
