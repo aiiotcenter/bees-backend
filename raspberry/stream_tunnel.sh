@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # stream_tunnel.sh – start MJPG-streamer with libcamera + PageKite
-# Kill any leftover camera processes to free the device
-pkill -f libcamera-vid    || true
+
+# Kill any leftover camera or tunnel processes to free the device\pkill -f libcamera-vid    || true
 pkill -f mjpg_streamer    || true
 pkill -f input_libcamera  || true
+pkill -f pagekite         || true
 sleep 2
 
 set -eEuo pipefail
-(( EUID != 0 )) && exec sudo "$0" "$@"
 
 # Log to a world-writable location
 LOGFILE=/var/log/bees-stream.log
