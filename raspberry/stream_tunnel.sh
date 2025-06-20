@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
-# stream_tunnel.sh – start MJPG-streamer with libcamera + PageKite
+# stream_tunnel.sh – MJPG-streamer with libcamera + PageKite
 
 set -eEuo pipefail
 
-# Kill any leftover camera users so libcamera is free
+# 0) Clean up any stray camera users
 pkill -f libcamera-vid   || true
 pkill -f mjpg_streamer   || true
-pkill -f input_libcamera || true
 sleep 2
 
-# Log everything here (world-writable file)
+# 1) Redirect all logs here (world‐writable)
 LOGFILE=/var/log/bees-stream.log
 exec >>"$LOGFILE" 2>&1
 
 echo "[INFO] ==== STREAM TUNNEL STARTING ===="
 
-# 1) MJPG-streamer w/ libcamera input plugin
+# 2) MJPG-streamer using libcamera plugin
 echo "[INFO] Starting MJPG-streamer (libcamera) → http://localhost:8080"
 export LD_LIBRARY_PATH=/usr/local/lib/mjpg-streamer
 mjpg_streamer \
@@ -29,19 +28,19 @@ if ! kill -0 "$MJPG_PID" 2>/dev/null; then
   exit 1
 fi
 
-# 2) PageKite tunnel
+# 3) PageKite tunnel
 echo "[INFO] Opening PageKite → http://beesscamera.pagekite.me/?action=stream"
 pagekite 8080 beesscamera.pagekite.me &
 KITE_PID=$!
 
-# 3) Cleanup on exit
-cleanup() {
+# 4) Cleanup on exit
+cleanup(){
   echo "[INFO] Stopping all child processes…"
   kill "$MJPG_PID" "$KITE_PID" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
-# 4) Wait for any to exit
+# 5) Wait for either to exit
 wait -n "$MJPG_PID" "$KITE_PID"
 echo "[WARN] One component exited, triggering restart"
 exit 1
