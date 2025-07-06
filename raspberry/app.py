@@ -35,8 +35,8 @@ def main():
     setup_gpio()
     
     # Initialize HX711 and tare the scale
-    hx.reset()
-    tare()
+  #  hx.reset()
+  #  tare()
     
     # Load or calibrate the weight sensor
     cal_factor = load_calibration()
@@ -54,14 +54,14 @@ def main():
             door_open = read_ir_door_status()
             
             # Get weight reading
-            weight = get_weight()  # Use the function from weightsensor.py
-            if weight is not None:
-                print(f"[WEIGHT] {weight:.2f} g")
-            else:
-                print("⚠️ Failed to read weight.")
+          #  weight = get_weight()  # Use the function from weightsensor.py
+          #  if weight is not None:
+               # print(f"[WEIGHT] {weight:.2f} g")
+          #  else:
+              #  print("⚠️ Failed to read weight.")
 
-            hx.power_down()
-            hx.power_up()
+           # hx.power_down()
+           # hx.power_up()
 
             latitude, longitude = get_gps_location()
             if latitude is not None and longitude is not None:
@@ -72,7 +72,7 @@ def main():
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": weight,
+               # "weight": weight,
                 "distance": 0,
                 "soundStatus": 1,
                 "isDoorOpen": int(door_open),
