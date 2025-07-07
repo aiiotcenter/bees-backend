@@ -45,7 +45,7 @@ def main():
     else:
         print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
     
-    hx.set_reference_unit(cal_factor)
+ #   hx.set_reference_unit(cal_factor)
 
     try:
         while True:
