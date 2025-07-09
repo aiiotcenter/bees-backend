@@ -1,5 +1,10 @@
 import requests
+import time
 import RPi.GPIO as GPIO
+from sensors.DHT import get_temp_humidity
+from sensors.sound import monitor_sound
+from sensors.ir import read_ir_door_status
+# from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, get_weight, hx
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
 
@@ -25,20 +30,36 @@ def send_data_to_api(data):
 def main():
     setup_gpio()
     try:
+        # Read sensors
+        temperature, humidity = get_temp_humidity()
+        print(f"🌡️ Temp: {temperature} °C, 💧 Humidity: {humidity}%")
+
+        sound = monitor_sound()
+        print(f"🎧 Sound: {sound}")
+
+        door_open = read_ir_door_status()
+        print(f"🚪 Door: {'Open' if door_open else 'Closed'}")
+
+        # Weight placeholder (optional to implement later)
+        weight = 0
+        # weight = get_weight()
+
+        # Compose sensor data payload
         sensor_data = {
             "hiveId": 1,
-            "temperature": 1,
-            "humidity": 1,
-            "weight": 0,
+            "temperature": temperature,
+            "humidity": humidity,
+            "weight": weight,
             "distance": 0,
-            "soundStatus": 1,
-            "isDoorOpen": 1,
+            "soundStatus": sound,
+            "isDoorOpen": int(door_open),
             "numOfIn": 0,
             "numOfOut": 0
         }
 
         send_data_to_api(sensor_data)
-        print("✅ Finished test run.")
+        print("✅ Finished test run.\n")
+
     finally:
         cleanup_gpio()
 
