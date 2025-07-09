@@ -48,7 +48,7 @@ def main():
     #hx.set_reference_unit(cal_factor)
 
     try:
-        while True:
+        #while True:
             #temperature, humidity = get_temp_humidity()
             #sound = monitor_sound()
             #door_open = read_ir_door_status()
