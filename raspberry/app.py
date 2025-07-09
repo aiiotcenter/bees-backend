@@ -35,17 +35,17 @@ def main():
     setup_gpio()
     
     #Initialize HX711 and tare the scale
-    hx.reset()
-    tare()
+    #hx.reset()
+    #tare()
     
     # Load or calibrate the weight sensor
-    cal_factor = load_calibration()
-    if cal_factor is None:
-        cal_factor = calibrate()
-    else:
-        print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
+    #cal_factor = load_calibration()
+    #if cal_factor is None:
+        #cal_factor = calibrate()
+    #else:
+        #print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
     
-    hx.set_reference_unit(cal_factor)
+    #hx.set_reference_unit(cal_factor)
 
     try:
         while True:
