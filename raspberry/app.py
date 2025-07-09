@@ -4,7 +4,7 @@ import RPi.GPIO as GPIO
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
-from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, get_weight, hx
+from sensors.hx711py.weightsensor import get_weight  # use your new file
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
 
@@ -34,44 +34,19 @@ def safe_read(func, name="sensor", fallback=None):
         print(f"⚠️ {name} failed: {e}")
         return fallback
 
-def read_weight_safe():
-    try:
-        weight = get_weight()
-        if weight is not None:
-            print(f"[WEIGHT] {weight:.2f} g")
-            hx.power_down()
-            hx.power_up()
-            return weight
-        else:
-            print("⚠️ Weight returned None.")
-            return 0
-    except Exception as e:
-        print(f"⚠️ Error reading weight: {e}")
-        return 0
-
 def main():
     setup_gpio()
-
     try:
-        hx.reset()
-        tare()
-
-        cal_factor = load_calibration()
-        if cal_factor is None:
-            cal_factor = calibrate()
-        print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
-        hx.set_reference_unit(cal_factor)
-
         while True:
-            temperature, humidity = safe_read(get_temp_humidity, name="Temperature/Humidity", fallback=(None, None))
+            temperature, humidity = safe_read(get_temp_humidity, name="Temp/Humidity", fallback=(-1, -1))
             sound = safe_read(monitor_sound, name="Sound", fallback=0)
-            door_open = safe_read(read_ir_door_status, name="Door Sensor", fallback=False)
-            weight = read_weight_safe()
+            door_open = safe_read(read_ir_door_status, name="Door", fallback=False)
+            weight = get_weight(timeout=2) or 0
 
             sensor_data = {
                 "hiveId": 1,
-                "temperature": temperature if temperature is not None else -1,
-                "humidity": humidity if humidity is not None else -1,
+                "temperature": temperature,
+                "humidity": humidity,
                 "weight": weight,
                 "distance": 0,
                 "soundStatus": sound,
