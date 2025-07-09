@@ -50,18 +50,18 @@ def main():
     try:
         while True:
             temperature, humidity = get_temp_humidity()
-            sound = monitor_sound()
-            door_open = read_ir_door_status()
+            #sound = monitor_sound()
+            #door_open = read_ir_door_status()
             
             # Get weight reading
-            weight = get_weight()  
-            if weight is not None:
-                print(f"[WEIGHT] {weight:.2f} g")
-            else:
-                print("⚠️ Failed to read weight.")
+            #weight = get_weight()  
+            #if weight is not None:
+                #print(f"[WEIGHT] {weight:.2f} g")
+            #else:
+                #print("⚠️ Failed to read weight.")
 
-            hx.power_down()
-            hx.power_up()
+            #hx.power_down()
+            #hx.power_up()
 
             #latitude, longitude = get_gps_location()
             #if latitude is not None and longitude is not None:
@@ -72,7 +72,7 @@ def main():
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-                "weight": weight,
+                "weight": 0,#weight,
                 "distance": 0,
                 "soundStatus": 1,
                 "isDoorOpen": 1, #int(door_open),
