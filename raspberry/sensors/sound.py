@@ -5,7 +5,7 @@ SOUND_PIN = 7
 
 def monitor_sound():
     try:
-        state = GPIO.input(SOUND_SENSOR_PIN)
+        state = GPIO.input(SOUND_PIN)
         print(f"🎤 Sound Sensor: {'HIGH (Detected)' if state else 'LOW (No sound)'}")
         return state == GPIO.HIGH
     except Exception as e:
