@@ -34,18 +34,18 @@ def send_data_to_api(data):
 def main():
     setup_gpio()
     
-    # Initialize HX711 and tare the scale
-  #  hx.reset()
-  #  tare()
+    #Initialize HX711 and tare the scale
+    hx.reset()
+    tare()
     
     # Load or calibrate the weight sensor
-    #cal_factor = load_calibration()
-   # if cal_factor is None:
-     #   cal_factor = calibrate()
-   # else:
-    #    print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
+    cal_factor = load_calibration()
+    if cal_factor is None:
+        cal_factor = calibrate()
+    else:
+        print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
     
- #   hx.set_reference_unit(cal_factor)
+    hx.set_reference_unit(cal_factor)
 
     try:
         while True:
@@ -54,28 +54,28 @@ def main():
             door_open = read_ir_door_status()
             
             # Get weight reading
-          #  weight = get_weight()  # Use the function from weightsensor.py
-          #  if weight is not None:
-               # print(f"[WEIGHT] {weight:.2f} g")
-          #  else:
-              #  print("⚠️ Failed to read weight.")
+            weight = get_weight()  
+            if weight is not None:
+                print(f"[WEIGHT] {weight:.2f} g")
+            else:
+                print("⚠️ Failed to read weight.")
 
-           # hx.power_down()
-           # hx.power_up()
+            hx.power_down()
+            hx.power_up()
 
-            latitude, longitude = get_gps_location()
-            if latitude is not None and longitude is not None:
-                send_location_to_api(latitude, longitude)
+            #latitude, longitude = get_gps_location()
+            #if latitude is not None and longitude is not None:
+            #    send_location_to_api(latitude, longitude)
 
             # Compose sensor data payload
             sensor_data = {
                 "hiveId": 1,
                 "temperature": temperature,
                 "humidity": humidity,
-               # "weight": weight,
+                "weight": weight,
                 "distance": 0,
                 "soundStatus": 1,
-                "isDoorOpen": int(door_open),
+                "isDoorOpen": 1, #int(door_open),
                 "numOfIn": 0,
                 "numOfOut": 0
             }
