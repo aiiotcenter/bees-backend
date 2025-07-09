@@ -1,21 +1,17 @@
 import requests
 import time
 import RPi.GPIO as GPIO
-
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 from sensors.hx711py.weightsensor import tare, calibrate, load_calibration, get_weight, hx
 
-
-# API Endpoint for sensor data
 API_URL = "http://bees-backend.aiiot.center/api/records"
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-
     GPIO.setup(7, GPIO.IN)  # Sound sensor
     GPIO.setup(9, GPIO.IN)  # IR sensor
 
@@ -26,48 +22,59 @@ def cleanup_gpio():
 def send_data_to_api(data):
     try:
         print(f"📤 Sending sensor data: {data}")
-        response = requests.post(API_URL, data=data)
+        response = requests.post(API_URL, data=data, timeout=5)
         print(f"✅ Sensor API Response: {response.status_code} - {response.text}")
     except Exception as e:
         print(f"⚠️ Error sending sensor data: {e}")
 
-def main():
-    setup_gpio()
-    
-    # Initialize HX711 and tare the scale
-    hx.reset()
-    tare()
-    
-    # Load or calibrate the weight sensor
-    cal_factor = load_calibration()
-    if cal_factor is None:
-        cal_factor = calibrate()
-    print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
-    hx.set_reference_unit(cal_factor)
-
+def safe_read(func, name="sensor", fallback=None):
     try:
-        while True:
-            temperature, humidity = get_temp_humidity()
-            sound = monitor_sound()
-            door_open = read_ir_door_status()
+        return func()
+    except Exception as e:
+        print(f"⚠️ {name} failed: {e}")
+        return fallback
 
-            weight = get_weight()  # Use the function from weightsensor.py
-            if weight is not None:
-                print(f"[WEIGHT] {weight:.2f} g")
-            else:
-                print("⚠️ Failed to read weight.")
-
+def read_weight_safe():
+    try:
+        weight = get_weight()
+        if weight is not None:
+            print(f"[WEIGHT] {weight:.2f} g")
             hx.power_down()
             hx.power_up()
+            return weight
+        else:
+            print("⚠️ Weight returned None.")
+            return 0
+    except Exception as e:
+        print(f"⚠️ Error reading weight: {e}")
+        return 0
 
-            # Compose sensor data payload
+def main():
+    setup_gpio()
+
+    try:
+        hx.reset()
+        tare()
+
+        cal_factor = load_calibration()
+        if cal_factor is None:
+            cal_factor = calibrate()
+        print(f"[INFO] Using saved calibration factor: {cal_factor:.2f}")
+        hx.set_reference_unit(cal_factor)
+
+        while True:
+            temperature, humidity = safe_read(get_temp_humidity, name="Temperature/Humidity", fallback=(None, None))
+            sound = safe_read(monitor_sound, name="Sound", fallback=0)
+            door_open = safe_read(read_ir_door_status, name="Door Sensor", fallback=False)
+            weight = read_weight_safe()
+
             sensor_data = {
                 "hiveId": 1,
-                "temperature": temperature,
-                "humidity": humidity,
+                "temperature": temperature if temperature is not None else -1,
+                "humidity": humidity if humidity is not None else -1,
                 "weight": weight,
                 "distance": 0,
-                "soundStatus": 1,
+                "soundStatus": sound,
                 "isDoorOpen": int(door_open),
                 "numOfIn": 0,
                 "numOfOut": 0
