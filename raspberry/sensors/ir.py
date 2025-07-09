@@ -3,8 +3,8 @@ import RPi.GPIO as GPIO
 IR_PIN = 9
 
 GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BCM)      # Required!
-GPIO.setup(IR_PIN, GPIO.IN) # Required!
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(IR_PIN, GPIO.IN)
 
 def read_ir_door_status():
     try:
@@ -13,4 +13,4 @@ def read_ir_door_status():
         return state == GPIO.HIGH
     except Exception as e:
         print(f"⚠️ Error reading IR sensor: {e}")
-        return True  # Assume open if error
+        return True
