@@ -1,6 +1,5 @@
 import RPi.GPIO as GPIO
-
-IR_SENSOR = 9
+IR_PIN = 9  
 
 def read_ir_door_status():
     try:

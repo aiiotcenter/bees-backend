@@ -36,6 +36,8 @@ def safe_read(func, name="sensor", fallback=None):
 
 def main():
     setup_gpio()
+    GPIO.setmode(GPIO.BCM)
+
     try:
         while True:
             temperature, humidity = safe_read(get_temp_humidity, name="Temp/Humidity", fallback=(-1, -1))

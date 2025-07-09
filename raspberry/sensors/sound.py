@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 
-SOUND_SENSOR_PIN = 7
+
+SOUND_PIN = 7
 
 def monitor_sound():
     try:
