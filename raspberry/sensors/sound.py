@@ -1,7 +1,10 @@
 import RPi.GPIO as GPIO
 
-
 SOUND_PIN = 7
+
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)         # Required!
+GPIO.setup(SOUND_PIN, GPIO.IN) # Required!
 
 def monitor_sound():
     try:
