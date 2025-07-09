@@ -49,7 +49,7 @@ def main():
 
     try:
         while True:
-            temperature, humidity = get_temp_humidity()
+            #temperature, humidity = get_temp_humidity()
             #sound = monitor_sound()
             #door_open = read_ir_door_status()
             
@@ -70,8 +70,8 @@ def main():
             # Compose sensor data payload
             sensor_data = {
                 "hiveId": 1,
-                "temperature": temperature,
-                "humidity": humidity,
+                "temperature": 1,#temperature,
+                "humidity": 1,#humidity,
                 "weight": 0,#weight,
                 "distance": 0,
                 "soundStatus": 1,
