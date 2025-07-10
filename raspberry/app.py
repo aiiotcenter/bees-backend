@@ -9,15 +9,15 @@ from sensors.hx711py.weightsensor import get_weight
 from sensors.gps_module import get_gsm_location, send_location_to_api
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
-BUFFER_SEND_INTERVAL = 15  # Number of records before sending
+BUFFER_SEND_INTERVAL = 15
 GPRS_SCRIPT = "/home/pi/gprs_connect.sh"
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(7, GPIO.IN)  # Sound sensor
-    GPIO.setup(9, GPIO.IN)  # IR sensor
+    GPIO.setup(7, GPIO.IN)
+    GPIO.setup(9, GPIO.IN)
 
 def cleanup_gpio():
     print("🧼 Cleaning up GPIO...")
@@ -38,25 +38,29 @@ def safe_read(func, name="sensor", fallback=None):
         print(f"⚠️ {name} failed: {e}")
         return fallback
 
-def check_gprs_and_connect():
-    try:
-        gprs_check = subprocess.run(['ifconfig', 'ppp0'], capture_output=True, text=True)
-        if "inet " not in gprs_check.stdout:
-            print("📞 GPRS not active. Connecting...")
-            subprocess.run(['sudo', GPRS_SCRIPT])
-            time.sleep(10)
-        else:
-            print("📶 GPRS is already active.")
-    except Exception as e:
-        print(f"⚠️ GPRS connection failed: {e}")
+def kill_ppp():
+    subprocess.run(["sudo", "poff", "-a"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(2)
 
-def enforce_gprs_default_route():
+def start_gprs():
+    print("📞 GPRS not active. Connecting...")
+    try:
+        subprocess.run(["sudo", GPRS_SCRIPT])
+        time.sleep(10)
+    except Exception as e:
+        print(f"⚠️ GPRS connection error: {e}")
+
+def set_gprs_as_default():
     try:
         subprocess.run(["sudo", "ip", "route", "del", "default"], stderr=subprocess.DEVNULL)
         subprocess.run(["sudo", "ip", "route", "add", "default", "dev", "ppp0"])
         print("🌐 GPRS set as default route.")
     except Exception as e:
-        print(f"⚠️ Failed to set GPRS as default route: {e}")
+        print(f"⚠️ Failed to set GPRS route: {e}")
+
+def gprs_connected():
+    result = subprocess.run(["ifconfig"], capture_output=True, text=True)
+    return "ppp0" in result.stdout
 
 def main():
     setup_gpio()
@@ -69,18 +73,19 @@ def main():
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
-            # Stop GPRS to free the serial port
-            subprocess.run(["sudo", "poff", "-a"])
-            time.sleep(2)
+            # ❗️Stop GPRS to free /dev/ttyS0
+            kill_ppp()
 
-            # Get GPS location via GSM
             lat, lon = get_gsm_location()
             if lat and lon:
                 send_location_to_api(lat, lon)
+            else:
+                lat, lon = "0", "0"
 
-            # Reconnect GPRS
-            check_gprs_and_connect()
-            enforce_gprs_default_route()
+            # ✅ Restart GPRS
+            if not gprs_connected():
+                start_gprs()
+            set_gprs_as_default()
 
             data = {
                 "hiveId": "1",
@@ -92,8 +97,8 @@ def main():
                 "isDoorOpen": 1 if door_open else 0,
                 "numOfIn": 0,
                 "numOfOut": 0,
-                "latitude": str(lat) if lat else "0",
-                "longitude": str(lon) if lon else "0"
+                "latitude": str(lat),
+                "longitude": str(lon)
             }
 
             buffered_data.append(data)
