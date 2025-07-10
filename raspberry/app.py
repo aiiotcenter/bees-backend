@@ -3,14 +3,11 @@ import time
 import RPi.GPIO as GPIO
 import subprocess
 
-
 from DHT import get_temp_humidity
 from sound import monitor_sound
 from ir import read_ir_door_status
 from gps_module import get_gps_location, send_location_to_api
 from sensors.hx711py.weightsensor import get_weight
-
-
 API_URL = "http://bees-backend.aiiot.center/api/records"
 BUFFER_SEND_INTERVAL = 15
 
