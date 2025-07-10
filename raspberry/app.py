@@ -37,16 +37,8 @@ def safe_read(func, name="sensor", fallback=None):
         print(f"⚠️ {name} failed: {e}")
         return fallback
 
-def check_gprs_and_connect():
+def ensure_gprs_connection():
     try:
-        wifi_check = subprocess.run(['ifconfig', 'wlan0'], capture_output=True, text=True)
-        if "inet " in wifi_check.stdout:
-            print("📡 Wi-Fi detected. Disabling wlan0...")
-            subprocess.run(['sudo', 'ifconfig', 'wlan0', 'down'])
-            time.sleep(3)
-        else:
-            print("✅ Wi-Fi already disabled.")
-
         gprs_check = subprocess.run(['ifconfig', 'ppp0'], capture_output=True, text=True)
         if "inet " not in gprs_check.stdout:
             print("📞 GPRS not active. Connecting...")
@@ -55,7 +47,7 @@ def check_gprs_and_connect():
         else:
             print("📶 GPRS is already active.")
     except Exception as e:
-        print(f"⚠️ GPRS/Wi-Fi check failed: {e}")
+        print(f"⚠️ GPRS connection check failed: {e}")
 
 def main():
     setup_gpio()
@@ -68,17 +60,16 @@ def main():
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
-            # Step 1: stop GPRS to free serial port
+            # Temporarily stop GPRS for serial access
             subprocess.run(["sudo", "poff"])
             time.sleep(2)
 
-            # Step 2: get GSM location
             lat, lon = get_gsm_location()
             if lat and lon:
                 send_location_to_api(lat, lon)
 
-            # Step 3: reconnect GPRS
-            check_gprs_and_connect()
+            # Reconnect GPRS
+            ensure_gprs_connection()
 
             data = {
                 "hiveId": "1",
@@ -104,7 +95,7 @@ def main():
                 buffered_data.clear()
                 print("✅ Sent all buffered data.")
 
-            print("🔄 Waiting for next cycle...\\n")
+            print("🔄 Waiting for next cycle...\n")
             time.sleep(60)
 
     except KeyboardInterrupt:
