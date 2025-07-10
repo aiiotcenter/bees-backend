@@ -6,17 +6,17 @@ from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 from sensors.hx711py.weightsensor import get_weight 
-from sensors.gps_module import get_gps_location, send_location_to_api
+from sensors.gps_module import get_gsm_location, send_location_to_api  
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
-BUFFER_SEND_INTERVAL = 15
+BUFFER_SEND_INTERVAL = 15  # in minutes
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(7, GPIO.IN)
-    GPIO.setup(9, GPIO.IN)
+    GPIO.setup(7, GPIO.IN)  # Sound sensor
+    GPIO.setup(9, GPIO.IN)  # IR sensor
 
 def cleanup_gpio():
     print("🧼 Cleaning up GPIO...")
@@ -42,8 +42,8 @@ def check_gprs_and_connect():
     if 'ppp0' not in result.stdout:
         print("📡 GPRS not active. Attempting to connect...")
         try:
-            subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])
-            time.sleep(10)
+            subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])  # Update this path if needed
+            time.sleep(10)  # wait for connection to establish
         except Exception as e:
             print(f"⚠️ Failed to launch GPRS: {e}")
     else:
@@ -60,7 +60,8 @@ def main():
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
-            lat, lon = get_gps_location()
+            # Get GSM-based location
+            lat, lon = get_gsm_location()
             if lat and lon:
                 send_location_to_api(lat, lon)
 
