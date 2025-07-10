@@ -9,14 +9,15 @@ from sensors.hx711py.weightsensor import get_weight
 from sensors.gps_module import get_gsm_location, send_location_to_api
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
-BUFFER_SEND_INTERVAL = 15  # in minutes
+BUFFER_SEND_INTERVAL = 15  # Number of records before sending
+GPRS_SCRIPT = "/home/pi/gprs_connect.sh"
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(7, GPIO.IN)
-    GPIO.setup(9, GPIO.IN)
+    GPIO.setup(7, GPIO.IN)  # Sound sensor
+    GPIO.setup(9, GPIO.IN)  # IR sensor
 
 def cleanup_gpio():
     print("🧼 Cleaning up GPIO...")
@@ -37,17 +38,25 @@ def safe_read(func, name="sensor", fallback=None):
         print(f"⚠️ {name} failed: {e}")
         return fallback
 
-def ensure_gprs_connection():
+def check_gprs_and_connect():
     try:
         gprs_check = subprocess.run(['ifconfig', 'ppp0'], capture_output=True, text=True)
         if "inet " not in gprs_check.stdout:
             print("📞 GPRS not active. Connecting...")
-            subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])
+            subprocess.run(['sudo', GPRS_SCRIPT])
             time.sleep(10)
         else:
             print("📶 GPRS is already active.")
     except Exception as e:
-        print(f"⚠️ GPRS connection check failed: {e}")
+        print(f"⚠️ GPRS connection failed: {e}")
+
+def enforce_gprs_default_route():
+    try:
+        subprocess.run(["sudo", "ip", "route", "del", "default"], stderr=subprocess.DEVNULL)
+        subprocess.run(["sudo", "ip", "route", "add", "default", "dev", "ppp0"])
+        print("🌐 GPRS set as default route.")
+    except Exception as e:
+        print(f"⚠️ Failed to set GPRS as default route: {e}")
 
 def main():
     setup_gpio()
@@ -60,16 +69,18 @@ def main():
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
-            # Temporarily stop GPRS for serial access
-            subprocess.run(["sudo", "poff"])
+            # Stop GPRS to free the serial port
+            subprocess.run(["sudo", "poff", "-a"])
             time.sleep(2)
 
+            # Get GPS location via GSM
             lat, lon = get_gsm_location()
             if lat and lon:
                 send_location_to_api(lat, lon)
 
             # Reconnect GPRS
-            ensure_gprs_connection()
+            check_gprs_and_connect()
+            enforce_gprs_default_route()
 
             data = {
                 "hiveId": "1",
