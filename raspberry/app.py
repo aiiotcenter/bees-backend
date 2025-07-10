@@ -8,7 +8,7 @@ from sensors.ir import read_ir_door_status
 from sensors.hx711py.weightsensor import get_weight 
 from sensors.gps_module import get_gsm_location, send_location_to_api  
 
-API_URL = "http://bees-backend.aiiot.center/api/records"
+AAPI_URL = "http://bees-backend.aiiot.center/api/records"
 BUFFER_SEND_INTERVAL = 15  # in minutes
 
 def setup_gpio():
@@ -43,7 +43,7 @@ def check_gprs_and_connect():
         print("📡 GPRS not active. Attempting to connect...")
         try:
             subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])  # Update this path if needed
-            time.sleep(10)  # wait for connection to establish
+            time.sleep(10)
         except Exception as e:
             print(f"⚠️ Failed to launch GPRS: {e}")
     else:
@@ -60,7 +60,6 @@ def main():
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
-            # Get GSM-based location
             lat, lon = get_gsm_location()
             if lat and lon:
                 send_location_to_api(lat, lon)
@@ -74,7 +73,9 @@ def main():
                 "soundStatus": 1 if sound else 0,
                 "isDoorOpen": 1 if door_open else 0,
                 "numOfIn": 0,
-                "numOfOut": 0
+                "numOfOut": 0,
+                "latitude": str(lat) if lat else "0",
+                "longitude": str(lon) if lon else "0"
             }
 
             buffered_data.append(data)
