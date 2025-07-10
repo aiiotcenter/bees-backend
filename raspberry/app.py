@@ -5,18 +5,18 @@ import subprocess
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
-from sensors.hx711py.weightsensor import get_weight 
-from sensors.gps_module import get_gsm_location, send_location_to_api  
+from sensors.hx711py.weightsensor import get_weight
+from sensors.gps_module import get_gsm_location, send_location_to_api
 
-AAPI_URL = "http://bees-backend.aiiot.center/api/records"
+API_URL = "http://bees-backend.aiiot.center/api/records"
 BUFFER_SEND_INTERVAL = 15  # in minutes
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(7, GPIO.IN)  # Sound sensor
-    GPIO.setup(9, GPIO.IN)  # IR sensor
+    GPIO.setup(7, GPIO.IN)
+    GPIO.setup(9, GPIO.IN)
 
 def cleanup_gpio():
     print("🧼 Cleaning up GPIO...")
@@ -36,9 +36,9 @@ def safe_read(func, name="sensor", fallback=None):
     except Exception as e:
         print(f"⚠️ {name} failed: {e}")
         return fallback
+
 def check_gprs_and_connect():
     try:
-        # Check if Wi-Fi is up
         wifi_check = subprocess.run(['ifconfig', 'wlan0'], capture_output=True, text=True)
         if "inet " in wifi_check.stdout:
             print("📡 Wi-Fi detected. Disabling wlan0...")
@@ -47,7 +47,6 @@ def check_gprs_and_connect():
         else:
             print("✅ Wi-Fi already disabled.")
 
-        # Check if GPRS (ppp0) is up
         gprs_check = subprocess.run(['ifconfig', 'ppp0'], capture_output=True, text=True)
         if "inet " not in gprs_check.stdout:
             print("📞 GPRS not active. Connecting...")
@@ -69,9 +68,17 @@ def main():
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
+            # Step 1: stop GPRS to free serial port
+            subprocess.run(["sudo", "poff"])
+            time.sleep(2)
+
+            # Step 2: get GSM location
             lat, lon = get_gsm_location()
             if lat and lon:
                 send_location_to_api(lat, lon)
+
+            # Step 3: reconnect GPRS
+            check_gprs_and_connect()
 
             data = {
                 "hiveId": "1",
@@ -91,7 +98,6 @@ def main():
             print(f"📦 Buffered {len(buffered_data)} readings.")
 
             if len(buffered_data) >= BUFFER_SEND_INTERVAL:
-                check_gprs_and_connect()
                 for entry in buffered_data:
                     send_data_to_api(entry)
                     time.sleep(1)
