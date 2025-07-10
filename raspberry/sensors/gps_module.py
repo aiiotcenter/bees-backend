@@ -27,7 +27,7 @@ def parse_creg(response):
 
 def get_gsm_location():
     try:
-        ser = serial.Serial('/dev/ttyS0', baudrate=9600, timeout=2)
+        ser = serial.Serial('/dev/ttyS0', baudrate=115200, timeout=2)
         time.sleep(2)
 
         # Enable detailed network info
