@@ -36,18 +36,27 @@ def safe_read(func, name="sensor", fallback=None):
     except Exception as e:
         print(f"⚠️ {name} failed: {e}")
         return fallback
-
 def check_gprs_and_connect():
-    result = subprocess.run(['ifconfig'], capture_output=True, text=True)
-    if 'ppp0' not in result.stdout:
-        print("📡 GPRS not active. Attempting to connect...")
-        try:
-            subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])  # Update this path if needed
+    try:
+        # Check if Wi-Fi is up
+        wifi_check = subprocess.run(['ifconfig', 'wlan0'], capture_output=True, text=True)
+        if "inet " in wifi_check.stdout:
+            print("📡 Wi-Fi detected. Disabling wlan0...")
+            subprocess.run(['sudo', 'ifconfig', 'wlan0', 'down'])
+            time.sleep(3)
+        else:
+            print("✅ Wi-Fi already disabled.")
+
+        # Check if GPRS (ppp0) is up
+        gprs_check = subprocess.run(['ifconfig', 'ppp0'], capture_output=True, text=True)
+        if "inet " not in gprs_check.stdout:
+            print("📞 GPRS not active. Connecting...")
+            subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])
             time.sleep(10)
-        except Exception as e:
-            print(f"⚠️ Failed to launch GPRS: {e}")
-    else:
-        print("📶 GPRS is already active.")
+        else:
+            print("📶 GPRS is already active.")
+    except Exception as e:
+        print(f"⚠️ GPRS/Wi-Fi check failed: {e}")
 
 def main():
     setup_gpio()
