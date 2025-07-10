@@ -2,20 +2,21 @@ import requests
 import time
 import RPi.GPIO as GPIO
 import subprocess
+from gps_module import get_gps_location, send_location_to_api
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
-from sensors.hx711py.weightsensor import get_weight  # use your new file
+from sensors.hx711py.weightsensor import get_weight
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
-BUFFER_SEND_INTERVAL = 15  # in minutes
+BUFFER_SEND_INTERVAL = 15
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(7, GPIO.IN)  # Sound sensor
-    GPIO.setup(9, GPIO.IN)  # IR sensor
+    GPIO.setup(7, GPIO.IN)
+    GPIO.setup(9, GPIO.IN)
 
 def cleanup_gpio():
     print("🧼 Cleaning up GPIO...")
@@ -41,8 +42,8 @@ def check_gprs_and_connect():
     if 'ppp0' not in result.stdout:
         print("📡 GPRS not active. Attempting to connect...")
         try:
-            subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])  # Update this path if needed
-            time.sleep(10)  # wait for connection to establish
+            subprocess.run(['sudo', '/home/pi/gprs_connect.sh'])
+            time.sleep(10)
         except Exception as e:
             print(f"⚠️ Failed to launch GPRS: {e}")
     else:
@@ -58,6 +59,10 @@ def main():
             sound = safe_read(monitor_sound, name="Sound", fallback=0)
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
+
+            lat, lon = get_gps_location()
+            if lat and lon:
+                send_location_to_api(lat, lon)
 
             data = {
                 "hiveId": "1",
@@ -82,7 +87,7 @@ def main():
                 buffered_data.clear()
                 print("✅ Sent all buffered data.")
 
-            print("🔄 Waiting for next cycle...\n")
+            print("🔄 Waiting for next cycle...\\n")
             time.sleep(60)
 
     except KeyboardInterrupt:
