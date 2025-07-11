@@ -73,20 +73,7 @@ def main():
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
-            # ❗️Stop GPRS to free /dev/ttyS0
-            kill_ppp()
-
-            lat, lon = get_gsm_location()
-            if lat and lon:
-                send_location_to_api(lat, lon)
-            else:
-                lat, lon = "0", "0"
-
-            # ✅ Restart GPRS
-            if not gprs_connected():
-                start_gprs()
-            set_gprs_as_default()
-
+            # Buffer data with placeholder lat/lon for now
             data = {
                 "hiveId": "1",
                 "temperature": str(temperature),
@@ -97,14 +84,34 @@ def main():
                 "isDoorOpen": 1 if door_open else 0,
                 "numOfIn": 0,
                 "numOfOut": 0,
-                "latitude": str(lat),
-                "longitude": str(lon)
+                "latitude": "0",
+                "longitude": "0"
             }
 
             buffered_data.append(data)
             print(f"📦 Buffered {len(buffered_data)} readings.")
 
             if len(buffered_data) >= BUFFER_SEND_INTERVAL:
+                # Stop GPRS to free ttyS0 for GPS
+                kill_ppp()
+                print("📡 Reading GPS...")
+                lat, lon = get_gsm_location()
+
+                # Use default location if GPS fails
+                if not lat or not lon:
+                    lat, lon = "0", "0"
+
+                # Attach lat/lon to each record
+                for entry in buffered_data:
+                    entry["latitude"] = str(lat)
+                    entry["longitude"] = str(lon)
+
+                # Restart GPRS
+                if not gprs_connected():
+                    start_gprs()
+                set_gprs_as_default()
+
+                # Send data
                 for entry in buffered_data:
                     send_data_to_api(entry)
                     time.sleep(1)
