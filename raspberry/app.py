@@ -114,21 +114,33 @@ def gprs_connected():
     return "ppp0" in result.stdout
 def clear_environment():
     print("🧹 Cleaning environment before start...")
-    # Kill any related processes
-    subprocess.run(["sudo", "pkill", "-f", "pppd"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["sudo", "pkill", "-f", "chat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["sudo", "pkill", "-f", "/usr/sbin/chat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["sudo", "pkill", "-f", "pon"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(["sudo", "pkill", "-f", "poff"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Remove tty lock files
+    # Kill any related processes
+    subprocess.run(["sudo", "pkill", "-9", "-f", "pppd"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "pkill", "-9", "-f", "chat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "pkill", "-9", "-f", "pon"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "pkill", "-9", "-f", "poff"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Remove lock file
     subprocess.run(["sudo", "rm", "-f", "/var/lock/LCK..ttyS0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    # Sleep a little to allow system to fully release the port
-    time.sleep(1)
+    # Wait until /dev/ttyS0 is fully released
+    for i in range(5):
+        result = subprocess.run(["lsof", "/dev/ttyS0"], capture_output=True, text=True)
+        if result.stdout.strip() == "":
+            print(f"✅ ttyS0 is now free after {i+1} second(s).")
+            break
+        print(f"⏳ ttyS0 still busy... waiting ({i+1}/5)")
+        time.sleep(1)
+    else:
+        print("⚠️ ttyS0 still busy after multiple attempts.")
+
 
 def main():
-    clear_environment()  
+  # Before reading GPS
+    kill_ppp()
+    clear_environment()
+ 
     setup_gpio()
     buffered_data = []
 
