@@ -112,8 +112,23 @@ def start_gprs():
 def gprs_connected():
     result = subprocess.run(["ifconfig"], capture_output=True, text=True)
     return "ppp0" in result.stdout
+def clear_environment():
+    print("🧹 Cleaning environment before start...")
+    # Kill any related processes
+    subprocess.run(["sudo", "pkill", "-f", "pppd"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "pkill", "-f", "chat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "pkill", "-f", "/usr/sbin/chat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "pkill", "-f", "pon"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["sudo", "pkill", "-f", "poff"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Remove tty lock files
+    subprocess.run(["sudo", "rm", "-f", "/var/lock/LCK..ttyS0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Sleep a little to allow system to fully release the port
+    time.sleep(1)
 
 def main():
+    clear_environment()  
     setup_gpio()
     buffered_data = []
 
