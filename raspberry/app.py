@@ -10,7 +10,8 @@ from sensors.gps_module import get_gsm_location, send_location_to_api
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
 GPRS_SCRIPT = "/home/pi/gprs_connect.sh"
-NUM_READINGS = 3
+GPS_RETRIES = 3
+READINGS_BEFORE_GPS = 3
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
@@ -25,7 +26,7 @@ def cleanup_gpio():
 
 def send_data_to_api(data):
     try:
-        print(f"📤 Sending data: {data}")
+        print(f"📤 Sending buffered data: {data}")
         response = requests.post(API_URL, json=data, timeout=10)
         print(f"✅ API Response: {response.status_code} - {response.text}")
     except Exception as e:
@@ -52,34 +53,36 @@ def start_gprs():
 
 def set_gprs_as_default():
     try:
+        print("🌐 Switching default route to GPRS...")
         subprocess.run(["sudo", "ip", "route", "del", "default"], stderr=subprocess.DEVNULL)
-        subprocess.run(["sudo", "ip", "route", "add", "default", "dev", "ppp0"])
-        print("🌐 GPRS set as default route.")
-    except Exception as e:
+        subprocess.run(["sudo", "ip", "route", "add", "default", "dev", "ppp0"], check=True)
+        print("🌐 GPRS is now default route.")
+    except subprocess.CalledProcessError as e:
         print(f"⚠️ Failed to set GPRS route: {e}")
 
 def gprs_connected():
     result = subprocess.run(["ifconfig"], capture_output=True, text=True)
     return "ppp0" in result.stdout
 
-def try_gps_multiple_times(attempts=5):
-    for attempt in range(1, attempts + 1):
-        print(f"📡 GPS attempt {attempt}/{attempts}...")
-        lat, lon = get_gsm_location()
-        if lat and lon:
-            print(f"📍 Got GPS: {lat}, {lon}")
-            return lat, lon
-        time.sleep(2)
-    print("⚠️ GPS failed after retries.")
-    return "0", "0"
+def wait_for_tty_free(timeout=10):
+    for i in range(timeout):
+        result = subprocess.run(["lsof", "/dev/ttyS0"], capture_output=True, text=True)
+        if not result.stdout.strip():
+            print(f"✅ ttyS0 is now free after {i+1} seconds.")
+            return
+        time.sleep(1)
+    print("⚠️ ttyS0 still busy after timeout.")
 
 def main():
     setup_gpio()
     buffered_data = []
+    gps_lat = "0"
+    gps_lon = "0"
 
     try:
-        for i in range(NUM_READINGS):
-            print(f"🔄 Starting reading {i+1}/{NUM_READINGS}...")
+        for reading_count in range(READINGS_BEFORE_GPS):
+            print("🔄 Starting new reading...")
+
             temperature, humidity = safe_read(get_temp_humidity, name="Temp/Humidity", fallback=(-1, -1))
             sound = safe_read(monitor_sound, name="Sound", fallback=0)
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
@@ -95,33 +98,45 @@ def main():
                 "isDoorOpen": 1 if door_open else 0,
                 "numOfIn": 0,
                 "numOfOut": 0,
-                "latitude": "0",
-                "longitude": "0"
+                "latitude": gps_lat,
+                "longitude": gps_lon
             }
 
             buffered_data.append(data)
-            time.sleep(5)
+            print(f"📦 Buffered {len(buffered_data)} readings.")
+            time.sleep(1)
 
-        # Clean ttyS0 and prepare for GPS
+        # Stop GPRS and wait for ttyS0 to be free
         kill_ppp()
-        print("✅ ttyS0 is now free after 1 seconds.")
+        wait_for_tty_free()
 
-        # Try GPS
-        lat, lon = try_gps_multiple_times()
+        # Try getting GPS data up to N times
+        print("📡 Reading GPS...")
+        for attempt in range(GPS_RETRIES):
+            gps_lat, gps_lon = get_gsm_location()
+            if gps_lat and gps_lon and gps_lat != "0":
+                send_location_to_api(gps_lat, gps_lon)
+                break
+            print(f"🔁 GPS attempt {attempt+1} failed. Retrying...")
+            time.sleep(2)
+        else:
+            print("⚠️ GPS failed after multiple attempts.")
 
-        # Restore GPRS
+        # Start GPRS again
         if not gprs_connected():
             start_gprs()
-        set_gprs_as_default()
 
-        # Update all buffered data with GPS coords
+        set_gprs_as_default()
+        print("✅ Default route set. Proceeding to send data...")
+
+        # Update GPS in data and send
         for entry in buffered_data:
-            entry["latitude"] = str(lat)
-            entry["longitude"] = str(lon)
+            entry["latitude"] = gps_lat
+            entry["longitude"] = gps_lon
             send_data_to_api(entry)
             time.sleep(1)
 
-        print("✅ All readings sent. Done.")
+        print("✅ Sent all buffered data.")
 
     except KeyboardInterrupt:
         print("🛑 Program stopped by user.")
