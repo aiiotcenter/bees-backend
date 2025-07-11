@@ -9,7 +9,7 @@ from sensors.hx711py.weightsensor import get_weight
 from sensors.gps_module import get_gsm_location, send_location_to_api
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
-BUFFER_SEND_INTERVAL = 15
+BUFFER_SEND_INTERVAL = 3  # Set to 3 for test
 GPRS_SCRIPT = "/home/pi/gprs_connect.sh"
 
 def setup_gpio():
@@ -42,6 +42,16 @@ def kill_ppp():
     subprocess.run(["sudo", "poff", "-a"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(2)
 
+def wait_for_ttyS0_free(timeout=10):
+    for i in range(timeout):
+        result = subprocess.run(["lsof", "/dev/ttyS0"], capture_output=True, text=True)
+        if not result.stdout.strip():
+            print(f"✅ ttyS0 is now free after {i+1} seconds.")
+            return True
+        time.sleep(1)
+    print("❌ ttyS0 still busy after 10 seconds.")
+    return False
+
 def start_gprs():
     print("📞 GPRS not active. Connecting...")
     try:
@@ -67,13 +77,31 @@ def main():
     buffered_data = []
 
     try:
-        while True:
+        for _ in range(BUFFER_SEND_INTERVAL):
+            print("🔄 Starting new reading...")
             temperature, humidity = safe_read(get_temp_humidity, name="Temp/Humidity", fallback=(-1, -1))
             sound = safe_read(monitor_sound, name="Sound", fallback=0)
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
 
-            # Buffer data with placeholder lat/lon for now
+            # ❗️Stop GPRS to free /dev/ttyS0
+            kill_ppp()
+
+            lat, lon = "0", "0"
+            if wait_for_ttyS0_free():
+                print("📡 Reading GPS...")
+                lat, lon = get_gsm_location()
+                if lat and lon:
+                    send_location_to_api(lat, lon)
+                else:
+                    print("⚠️ GPS returned no coordinates.")
+                    lat, lon = "0", "0"
+
+            # ✅ Restart GPRS if not already connected
+            if not gprs_connected():
+                start_gprs()
+            set_gprs_as_default()
+
             data = {
                 "hiveId": "1",
                 "temperature": str(temperature),
@@ -84,42 +112,21 @@ def main():
                 "isDoorOpen": 1 if door_open else 0,
                 "numOfIn": 0,
                 "numOfOut": 0,
-                "latitude": "0",
-                "longitude": "0"
+                "latitude": str(lat),
+                "longitude": str(lon)
             }
 
             buffered_data.append(data)
-            print(f"📦 Buffered {len(buffered_data)} readings.")
+            print(f"📦 Buffered {len(buffered_data)} readings.\n")
+            time.sleep(10)  # Shorter delay for testing
 
-            if len(buffered_data) >= BUFFER_SEND_INTERVAL:
-                # Stop GPRS to free ttyS0 for GPS
-                kill_ppp()
-                print("📡 Reading GPS...")
-                lat, lon = get_gsm_location()
+        # ✅ After 3 readings
+        print("🚀 Sending all buffered data...")
+        for entry in buffered_data:
+            send_data_to_api(entry)
+            time.sleep(1)
 
-                # Use default location if GPS fails
-                if not lat or not lon:
-                    lat, lon = "0", "0"
-
-                # Attach lat/lon to each record
-                for entry in buffered_data:
-                    entry["latitude"] = str(lat)
-                    entry["longitude"] = str(lon)
-
-                # Restart GPRS
-                if not gprs_connected():
-                    start_gprs()
-                set_gprs_as_default()
-
-                # Send data
-                for entry in buffered_data:
-                    send_data_to_api(entry)
-                    time.sleep(1)
-                buffered_data.clear()
-                print("✅ Sent all buffered data.")
-
-            print("🔄 Waiting for next cycle...\n")
-            time.sleep(60)
+        print("✅ All test data sent.")
 
     except KeyboardInterrupt:
         print("🛑 Program stopped by user.")
