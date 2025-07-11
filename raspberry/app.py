@@ -137,10 +137,8 @@ def clear_environment():
 
 
 def main():
-  # Before reading GPS
     kill_ppp()
     clear_environment()
- 
     setup_gpio()
     buffered_data = []
 
