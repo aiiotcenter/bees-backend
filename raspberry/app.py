@@ -6,7 +6,7 @@ from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 from sensors.hx711py.weightsensor import get_weight
-from gps_module import get_gsm_location, send_location_to_api  # your existing gps module
+from sensors.gps_module import get_gsm_location, send_location_to_api  # your existing gps module
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
 MAX_READINGS = 3
