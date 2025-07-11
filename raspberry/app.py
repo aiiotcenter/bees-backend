@@ -38,7 +38,7 @@ def send_data_to_api(data):
 
 def get_gsm_location():
     try:
-        ser = serial.Serial("/dev/ttyS0", baudrate=4800, timeout=2)
+        ser = serial.Serial("/dev/ttyS0", baudrate=115200, timeout=2)
         ser.flushInput()
 
         ser.write(b"AT\r")
