@@ -9,8 +9,8 @@ from sensors.hx711py.weightsensor import get_weight
 from sensors.gps_module import get_gsm_location, send_location_to_api
 
 API_URL = "http://bees-backend.aiiot.center/api/records"
-BUFFER_SEND_INTERVAL = 3  # Set to 3 for test
 GPRS_SCRIPT = "/home/pi/gprs_connect.sh"
+NUM_READINGS = 3
 
 def setup_gpio():
     print("🔧 Setting up GPIO...")
@@ -25,7 +25,7 @@ def cleanup_gpio():
 
 def send_data_to_api(data):
     try:
-        print(f"📤 Sending buffered data: {data}")
+        print(f"📤 Sending data: {data}")
         response = requests.post(API_URL, json=data, timeout=10)
         print(f"✅ API Response: {response.status_code} - {response.text}")
     except Exception as e:
@@ -41,16 +41,6 @@ def safe_read(func, name="sensor", fallback=None):
 def kill_ppp():
     subprocess.run(["sudo", "poff", "-a"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(2)
-
-def wait_for_ttyS0_free(timeout=10):
-    for i in range(timeout):
-        result = subprocess.run(["lsof", "/dev/ttyS0"], capture_output=True, text=True)
-        if not result.stdout.strip():
-            print(f"✅ ttyS0 is now free after {i+1} seconds.")
-            return True
-        time.sleep(1)
-    print("❌ ttyS0 still busy after 10 seconds.")
-    return False
 
 def start_gprs():
     print("📞 GPRS not active. Connecting...")
@@ -72,35 +62,28 @@ def gprs_connected():
     result = subprocess.run(["ifconfig"], capture_output=True, text=True)
     return "ppp0" in result.stdout
 
+def try_gps_multiple_times(attempts=5):
+    for attempt in range(1, attempts + 1):
+        print(f"📡 GPS attempt {attempt}/{attempts}...")
+        lat, lon = get_gsm_location()
+        if lat and lon:
+            print(f"📍 Got GPS: {lat}, {lon}")
+            return lat, lon
+        time.sleep(2)
+    print("⚠️ GPS failed after retries.")
+    return "0", "0"
+
 def main():
     setup_gpio()
     buffered_data = []
 
     try:
-        for _ in range(BUFFER_SEND_INTERVAL):
-            print("🔄 Starting new reading...")
+        for i in range(NUM_READINGS):
+            print(f"🔄 Starting reading {i+1}/{NUM_READINGS}...")
             temperature, humidity = safe_read(get_temp_humidity, name="Temp/Humidity", fallback=(-1, -1))
             sound = safe_read(monitor_sound, name="Sound", fallback=0)
             door_open = safe_read(read_ir_door_status, name="Door", fallback=0)
             weight = get_weight(timeout=2) or 0
-
-            # ❗️Stop GPRS to free /dev/ttyS0
-            kill_ppp()
-
-            lat, lon = "0", "0"
-            if wait_for_ttyS0_free():
-                print("📡 Reading GPS...")
-                lat, lon = get_gsm_location()
-                if lat and lon:
-                    send_location_to_api(lat, lon)
-                else:
-                    print("⚠️ GPS returned no coordinates.")
-                    lat, lon = "0", "0"
-
-            # ✅ Restart GPRS if not already connected
-            if not gprs_connected():
-                start_gprs()
-            set_gprs_as_default()
 
             data = {
                 "hiveId": "1",
@@ -112,21 +95,33 @@ def main():
                 "isDoorOpen": 1 if door_open else 0,
                 "numOfIn": 0,
                 "numOfOut": 0,
-                "latitude": str(lat),
-                "longitude": str(lon)
+                "latitude": "0",
+                "longitude": "0"
             }
 
             buffered_data.append(data)
-            print(f"📦 Buffered {len(buffered_data)} readings.\n")
-            time.sleep(10)  # Shorter delay for testing
+            time.sleep(5)
 
-        # ✅ After 3 readings
-        print("🚀 Sending all buffered data...")
+        # Clean ttyS0 and prepare for GPS
+        kill_ppp()
+        print("✅ ttyS0 is now free after 1 seconds.")
+
+        # Try GPS
+        lat, lon = try_gps_multiple_times()
+
+        # Restore GPRS
+        if not gprs_connected():
+            start_gprs()
+        set_gprs_as_default()
+
+        # Update all buffered data with GPS coords
         for entry in buffered_data:
+            entry["latitude"] = str(lat)
+            entry["longitude"] = str(lon)
             send_data_to_api(entry)
             time.sleep(1)
 
-        print("✅ All test data sent.")
+        print("✅ All readings sent. Done.")
 
     except KeyboardInterrupt:
         print("🛑 Program stopped by user.")
