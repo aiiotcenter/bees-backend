@@ -7,7 +7,7 @@ import subprocess
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
-from sensors.hx711py.weightsensor import get_weight
+# from sensors.hx711py.weightsensor import get_weight
 from sensors.gps_module import send_location_to_api
 from connectivity import get_location_then_connect
 
@@ -50,13 +50,13 @@ def main():
             temperature, humidity = get_temp_humidity()
             sound      = monitor_sound()
             door_open  = read_ir_door_status()
-            weight     = get_weight(timeout=2) or 0
+            # weight     = get_weight(timeout=2) or 0
 
             entry = {
                 "hiveId":      "1",
                 "temperature": str(temperature),
                 "humidity":    str(humidity),
-                "weight":      str(weight),
+                # "weight":      str(weight),
                 "distance":    0,
                 "soundStatus": 1 if sound else 0,
                 "isDoorOpen":  1 if door_open else 0,
