@@ -2,94 +2,78 @@ import serial
 import time
 import requests
 
-GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
-LOCATION_API_URL = "http://bees-backend.aiiot.center/api/hives/check-location/1"
+# Absolute import of your GPRS manager
+from gprs_manager import kill_ppp, start_gprs, is_up
 
+GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
+GEOLOC_URL     = (
+    "https://www.googleapis.com/geolocation/v1/geolocate?key="
+    + GOOGLE_API_KEY
+)
 MCC = 286  # Turkey
 MNC = 2    # Vodafone
 
-def send_at_command(ser, command, delay=1):
-    ser.write((command + "\r").encode())
+def send_at(ser, cmd, delay=2):
+    """Send AT command and read all, with a longer default delay."""
+    ser.write((cmd + "\r").encode())
     time.sleep(delay)
     return ser.read_all().decode(errors="ignore")
 
-def parse_creg(response):
-    try:
-        for line in response.split('\n'):
-            if "+CREG:" in line:
-                parts = line.split(",")
-                lac = parts[2].replace('"', '').strip()
-                cid = parts[3].replace('"', '').strip()
-                return lac, cid
-    except Exception as e:
-        print("❌ Parse error:", e)
+def parse_creg(resp):
+    """Extract LAC/CID from a +CREG response."""
+    for line in resp.splitlines():
+        if "+CREG:" in line:
+            parts = line.split(",")
+            lac = parts[2].strip().strip('"')
+            cid = parts[3].strip().strip('"')
+            return lac, cid
     return None, None
 
-def get_gsm_location():
+def get_cell_location_via_google():
+    """
+    1) Kill any existing PPP so /dev/serial0 is free
+    2) Read +CREG at a slower pace
+    3) Always start GPRS afterwards (even on parse failure)
+    4) Call Google Geolocation API
+    """
+    # Step 1: free the serial port
+    kill_ppp()
+
+    # Step 2: open the *hardware* UART
+    ser = serial.Serial('/dev/serial0', baudrate=115200, timeout=2)
+    time.sleep(2)                        # let the port settle
+
+    # enable detailed CREG, then query it
+    _ = send_at(ser, "AT+CREG=2", delay=2)
+    raw = send_at(ser, "AT+CREG?", delay=2)
+    ser.close()
+
+    lac, cid = parse_creg(raw)
+    if not lac or not cid:
+        print("❌ Could not parse LAC/CID:", repr(raw))
+        # still bring up GPRS so you regain Internet
+        if not is_up():
+            start_gprs()
+        return None, None
+
+    # Step 3: now that you have tower info, ensure data link is up
+    if not is_up():
+        start_gprs()
+
+    # Step 4: query Google
+    payload = {
+        "cellTowers": [{
+            "cellId": int(cid, 16),
+            "locationAreaCode": int(lac, 16),
+            "mobileCountryCode": MCC,
+            "mobileNetworkCode": MNC
+        }]
+    }
     try:
-        ser = serial.Serial('/dev/ttyS0', baudrate=115200, timeout=2)
-        time.sleep(2)
-
-        # Enable detailed network info
-        send_at_command(ser, "AT+CREG=2")
-        time.sleep(1)
-
-        # Request registration info
-        ser.write(b"AT+CREG?\r")
-        time.sleep(1)
-        response = ser.read_all().decode(errors="ignore")
-        print("📶 CREG Response:", repr(response))
-
-        lac, cid = parse_creg(response)
-        if lac and cid:
-            print(f"✅ LAC: {lac}, CID: {cid}")
-            return query_google_geolocation_api(lac, cid)
-        else:
-            print("❌ Could not extract LAC/CID.")
+        resp = requests.post(GEOLOC_URL, json=payload, timeout=10)
+        data = resp.json()
+        loc = data.get("location", {})
+        return loc.get("lat"), loc.get("lng")
     except Exception as e:
-        print("⚠️ GSM error:", e)
-    return None, None
-
-def query_google_geolocation_api(lac, cid):
-    try:
-        url = f"https://www.googleapis.com/geolocation/v1/geolocate?key={GOOGLE_API_KEY}"
-        payload = {
-            "cellTowers": [{
-                "cellId": int(cid, 16),
-                "locationAreaCode": int(lac, 16),
-                "mobileCountryCode": MCC,
-                "mobileNetworkCode": MNC
-            }]
-        }
-        print("📡 Querying Google Geolocation API...")
-        res = requests.post(url, json=payload)
-        data = res.json()
-        if "location" in data:
-            lat = data["location"]["lat"]
-            lon = data["location"]["lng"]
-            print(f"🌍 Location from Google: {lat}, {lon}")
-            return lat, lon
-        else:
-            print("❌ Google API response:", data)
-    except Exception as e:
-        print("❌ Google API Error:", e)
-    return None, None
-
-def send_location_to_api(latitude, longitude):
-    try:
-        payload = {
-            "latitude": latitude,
-            "longitude": longitude
-        }
-        print(f"📤 Sending to server: {payload}")
-        response = requests.post(LOCATION_API_URL, json=payload)
-        print(f"✅ Server Response: {response.status_code} - {response.text}")
-    except Exception as e:
-        print("⚠️ Failed to send to server:", e)
-
-if __name__ == "__main__":
-    lat, lon = get_gsm_location()
-    if lat and lon:
-        send_location_to_api(lat, lon)
-    else:
-        print("⚠️ No location found via GSM.")
+        print("❌ Google Geolocation API error:", e)
+        return None, None
