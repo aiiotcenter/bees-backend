@@ -56,7 +56,7 @@ def main():
                 "hiveId":      "1",
                 "temperature": str(temperature),
                 "humidity":    str(humidity),
-                # "weight":      str(weight),
+                "weight":      0,
                 "distance":    0,
                 "soundStatus": 1 if sound else 0,
                 "isDoorOpen":  1 if door_open else 0,
