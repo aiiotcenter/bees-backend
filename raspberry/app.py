@@ -42,7 +42,8 @@ def main():
                 "soundStatus":1 if s else 0,
                 "isDoorOpen":1 if door else 0,
                 "numOfIn":0,"numOfOut":0,
-                "latitude":"0","longitude":"0"
+                "latitude":"0","longitude":"0",
+                "status": True
             })
             time.sleep(2)
 
