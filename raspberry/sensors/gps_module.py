@@ -1,6 +1,6 @@
 # ~/bees-backend/raspberry/sensors/gps_module.py
 import serial, time, requests
-from ..gprs_manager import kill_ppp, start_gprs, is_up
+from gprs_manager import kill_ppp, start_gprs, is_up
 
 GOOGLE_API_KEY    = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
 GEOLOC_URL        = "https://www.googleapis.com/geolocation/v1/geolocate?key=" + GOOGLE_API_KEY
