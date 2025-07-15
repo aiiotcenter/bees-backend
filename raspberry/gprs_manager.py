@@ -1,7 +1,7 @@
 # ~/bees-backend/raspberry/gprs_manager.py
 import subprocess, time
 
-GPRS_SCRIPT = "/home/pi/bees-backend/raspberry/gprs_connect.sh"
+GPRS_SCRIPT = "/home/pi/gprs.sh"
 
 def kill_ppp():
     """Free /dev/ttyS0 so AT commands can run."""
