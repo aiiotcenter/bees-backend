@@ -3,41 +3,38 @@ import time
 import requests
 import subprocess
 import RPi.GPIO as GPIO
+
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 from sensors.gps_module import get_cell_location_via_google
+from gprs_manager import start_gprs, is_up
 
 # Configuration
-API_URL = "http://bees-backend.aiiot.center/api/records"
-API_HOST = "bees-backend.aiiot.center"
+API_URL      = "http://bees-backend.aiiot.center/api/records"
+API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
 
 
 def which_interface(host):
     """
-    Resolve a hostname to its IPv4 address and ask the kernel which
-    network interface will be used to reach it.
+    Resolve hostname to IPv4 and ask the kernel which interface it'll use.
     """
-    # Resolve hostname to IP
     res = subprocess.run(
-        ["getent", "ahostsv4", host],
-        capture_output=True, text=True
+        ["getent", "ahostsv4", host], capture_output=True, text=True
     )
     ip = res.stdout.split()[0]
-    # Ask the kernel for the route
-    route_res = subprocess.run(
-        ["ip", "route", "get", ip],
-        capture_output=True, text=True
-    )
-    return route_res.stdout.strip()
+    route = subprocess.run(
+        ["ip", "route", "get", ip], capture_output=True, text=True
+    ).stdout.strip()
+    return route
 
 
 def setup_gpio():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(7, GPIO.IN)   # Sound sensor input
-    GPIO.setup(9, GPIO.IN)   # IR sensor input
+    GPIO.setup(7, GPIO.IN)
+    GPIO.setup(9, GPIO.IN)
 
 
 def cleanup_gpio():
@@ -45,12 +42,11 @@ def cleanup_gpio():
 
 
 def send_data(entry):
-    # Log which interface will be used for the API call
     route = which_interface(API_HOST)
     print(f"🛣️  Route for {API_HOST}: {route}")
     try:
-        response = requests.post(API_URL, json=entry, timeout=15)
-        print(f"API→ {response.status_code} {response.text}")
+        resp = requests.post(API_URL, json=entry, timeout=15)
+        print(f"API→ {resp.status_code} {resp.text}")
     except Exception as e:
         print(f"⚠️ send_data error: {e}")
 
@@ -60,11 +56,11 @@ def main():
     buffered = []
 
     try:
-        # 1) take multiple sensor readings
+        # 1) collect sensor readings
         for _ in range(MAX_READINGS):
-            t, h = get_temp_humidity()
-            s    = monitor_sound()
-            door = read_ir_door_status()
+            t,h = get_temp_humidity()
+            s   = monitor_sound()
+            door= read_ir_door_status()
             buffered.append({
                 "hiveId": "1",
                 "temperature": str(t),
@@ -82,15 +78,20 @@ def main():
             print(f"📦 Buffered {len(buffered)} readings.")
             time.sleep(2)
 
-        # 2) get location via SIM900 + Google
+        # 2) get location
         print("🌐 Getting location via SIM900+Google…")
         lat, lon = get_cell_location_via_google()
         if not lat or not lon:
             lat, lon = 0, 0
 
-        # 3) send buffered data with coords
+        # 3) bring up GPRS if needed
+        if not is_up():
+            print("📲 Starting GPRS for data link…")
+            start_gprs()
+
+        # 4) send buffered data with coords
         for entry in buffered:
-            entry["latitude"] = str(lat)
+            entry["latitude"]  = str(lat)
             entry["longitude"] = str(lon)
             print(f"📤 Sending entry: {entry}")
             send_data(entry)
@@ -107,5 +108,4 @@ def main():
 if __name__ == "__main__":
     while True:
         main()
-        # Optional: sleep between cycles
         time.sleep(10)
