@@ -1,17 +1,18 @@
 #!/bin/bash
-# 1) kill any old PPP so /dev/serial0 is free
+# 1) kill old PPP
 sudo poff -a                      || true
 sudo pkill -9 -f pppd            || true
 sudo pkill -9 -f chat            || true
-sudo rm -f /var/lock/LCK..ttyS0 /var/lock/LCK..serial0 || true
+sudo rm -f /var/lock/LCK..ttyS0 /var/lock/LCK..serial0
 
-# 2) start the cellular data link\ nif ! sudo pon; then
-    echo "Connect script failed"
-    exit 1
+# 2) start cellular link
+if ! sudo pon; then
+  echo "Connect script failed"
+  exit 1
 fi
 sleep 5
 
-# 3) add host-route for your API
+# 3) install host‑route for your API
 API_HOST=bees-backend.aiiot.center
 API_IP=$(getent ahostsv4 $API_HOST | awk 'NR==1{print $1}')
 sudo ip route add $API_IP/32 dev ppp0
