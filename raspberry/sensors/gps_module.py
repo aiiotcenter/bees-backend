@@ -3,7 +3,7 @@ import time
 import requests
 
 # Absolute import of your GPRS manager
-from gprs_manager import kill_ppp, start_gprs, is_up
+from gprs_manager import start_gprs, is_up
 
 GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
 GEOLOC_URL     = (
