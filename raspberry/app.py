@@ -16,18 +16,29 @@ API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
 
 
-def which_interface(host):
+# def which_interface(host):
+#     """
+#     Resolve hostname to IPv4 and ask the kernel which interface it'll use.
+#     """
+#     res = subprocess.run(
+#         ["getent", "ahostsv4", host], capture_output=True, text=True
+#     )
+#     ip = res.stdout.split()[0]
+#     route = subprocess.run(
+#         ["ip", "route", "get", ip], capture_output=True, text=True
+#     ).stdout.strip()
+#     return route
+
+def which_interface():
     """
-    Resolve hostname to IPv4 and ask the kernel which interface it'll use.
+    Ask the kernel how it would reach the Internet (8.8.8.8),
+    which tells us the default interface (ppp0 vs wlan0).
     """
-    res = subprocess.run(
-        ["getent", "ahostsv4", host], capture_output=True, text=True
-    )
-    ip = res.stdout.split()[0]
-    route = subprocess.run(
-        ["ip", "route", "get", ip], capture_output=True, text=True
-    ).stdout.strip()
-    return route
+    out = subprocess.run(
+        ["ip", "route", "get", "8.8.8.8"],
+        capture_output=True, text=True
+    ).stdout
+    return out.strip()
 
 
 def setup_gpio():
@@ -42,8 +53,8 @@ def cleanup_gpio():
 
 
 def send_data(entry):
-    route = which_interface(API_HOST)
-    print(f"🛣️  Route for {API_HOST}: {route}")
+    route = which_interface()
+    print(f"🛣️  Default Route check: {route}")
     try:
         resp = requests.post(API_URL, json=entry, timeout=15)
         print(f"API→ {resp.status_code} {resp.text}")
