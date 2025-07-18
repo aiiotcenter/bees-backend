@@ -31,11 +31,11 @@ MAX_READINGS = 3
 
 def which_interface():
     """
-    Ask the kernel how it would reach the Internet (8.8.8.8),
-    which tells us the default interface (ppp0 vs wlan0).
+    Show the kernel's current default route.  
+    (This tells us whether ppp0 or wlan0 is being used.)
     """
     out = subprocess.run(
-        ["ip", "route", "get", "8.8.8.8"],
+        ["ip", "route", "show", "default"],
         capture_output=True, text=True
     ).stdout
     return out.strip()
@@ -54,12 +54,13 @@ def cleanup_gpio():
 
 def send_data(entry):
     route = which_interface()
-    print(f"🛣️  Default Route check: {route}")
+    print(f"🛣️  Default route: {route}")
     try:
-        resp = requests.post(API_URL, json=entry, timeout=15)
-        print(f"API→ {resp.status_code} {resp.text}")
+        r = requests.post(API_URL, json=entry, timeout=15)
+        print(f"API→ {r.status_code} {r.text}")
     except Exception as e:
-        print(f"⚠️ send_data error: {e}")
+        print(f"⚠️ send_data error:", e)
+
 
 
 def main():
