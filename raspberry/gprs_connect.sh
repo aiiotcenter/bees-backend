@@ -1,25 +1,33 @@
-#!/bin/bash
-set +m
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 1) kill any old PPP so /dev/serial0 frees
-sudo poff -a                 >/dev/null 2>&1 || true
-sudo pkill -9 -f pppd        >/dev/null 2>&1 || true
-sudo pkill -9 -f chat        >/dev/null 2>&1 || true
-sudo rm -f /var/lock/LCK..ttyS0 /var/lock/LCK..serial0 >/dev/null 2>&1
+# 1) kill any old PPP daemons so /dev/serial0 is free
+sudo poff -a 2>/dev/null || true
+sudo pkill -9 -f pppd 2>/dev/null || true
+sudo pkill -9 -f chat 2>/dev/null || true
+sudo rm -f /var/lock/LCK..ttyS0 /var/lock/LCK..serial0 2>/dev/null || true
 
-# 2) start pppd in background
+# 2) start PPP in background
 nohup sudo pon >/dev/null 2>&1 &
 
-# 3) wait for ppp0
-sleep 8
-
-# 4) link resolv.conf so you get provider + public DNS
-sudo ln -sf /etc/ppp/resolv.conf /etc/resolv.conf
-
-# 5) install a host-route for every API A‑record
-API_HOST=bees-backend.aiiot.center
-for IP in $(getent ahostsv4 $API_HOST | awk '{print $1}' | sort -u); do
-  sudo ip route add $IP/32 dev ppp0 || true
+# 3) wait up to 15s for ppp0 to appear
+echo "⏳ Waiting for ppp0…"
+for i in $(seq 1 15); do
+  if ip link show ppp0 &>/dev/null; then
+    echo "✅ ppp0 is up"
+    break
+  fi
+  sleep 1
 done
 
-echo "✅ ppp0 up; host‑routed $API_HOST → $(getent ahostsv4 $API_HOST | awk '{print $1}' | paste -sd, -) over ppp0"
+# 4) point resolv.conf at the PPP‑supplied file
+sudo ln -sf /etc/ppp/resolv.conf /etc/resolv.conf
+
+# 5) add a host‑route for every A‑record of your API host
+API=bees-backend.aiiot.center
+echo "🔀 Routing API host via ppp0"
+for ip in $(getent ahostsv4 $API | awk '{print $1}' | sort -u); do
+  sudo ip route replace $ip/32 dev ppp0
+done
+
+echo "--> gprs_connect done"

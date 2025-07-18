@@ -1,78 +1,64 @@
-import serial
-import time
-import requests
-
-# Absolute import of your GPRS manager
+import serial, time, requests
 from gprs_manager import kill_ppp, start_gprs, is_up
 
 GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
-GEOLOC_URL     = (
-    "https://www.googleapis.com/geolocation/v1/geolocate?key="
-    + GOOGLE_API_KEY
-)
-MCC = 286  # Turkey
-MNC = 2    # Vodafone
+GEOLOC_URL     = f"https://www.googleapis.com/geolocation/v1/geolocate?key={GOOGLE_API_KEY}"
+MCC, MNC       = 286, 2
 
 def send_at(ser, cmd, delay=2):
-    """Send AT command and read all, with a longer default delay."""
     ser.write((cmd + "\r").encode())
     time.sleep(delay)
     return ser.read_all().decode(errors="ignore")
 
 def parse_creg(resp):
-    """Extract LAC/CID from a +CREG response."""
     for line in resp.splitlines():
         if "+CREG:" in line:
-            parts = line.split(",")
-            lac = parts[2].strip().strip('"')
-            cid = parts[3].strip().strip('"')
-            return lac, cid
+            parts = [p.strip().strip('"') for p in line.split(",")]
+            # parts = [<mode>,<stat>,<lac>,<cid>]
+            if len(parts) >= 4 and parts[1] in ("1","5"):
+                return parts[2], parts[3]
     return None, None
 
-def get_cell_location_via_google():
-    """
-    1) Kill any existing PPP so /dev/serial0 is free
-    2) Read +CREG at a slower pace
-    3) Always start GPRS afterwards (even on parse failure)
-    4) Call Google Geolocation API
-    """
-    # Step 1: free the serial port
+def get_cell_location_via_google(max_retries=5):
+    # 1) free the serial port
     kill_ppp()
 
-    # Step 2: open the *hardware* UART
+    # 2) open & configure UART
     ser = serial.Serial('/dev/serial0', baudrate=115200, timeout=2)
-    time.sleep(2)                        # let the port settle
+    time.sleep(2)
 
-    # enable detailed CREG, then query it
-    _ = send_at(ser, "AT+CREG=2", delay=2)
-    raw = send_at(ser, "AT+CREG?", delay=2)
+    # 3) loop until we get a usable LAC/CID
+    lac = cid = None
+    for i in range(max_retries):
+        _ = send_at(ser, "AT+CREG=2", delay=2)
+        raw = send_at(ser, "AT+CREG?", delay=2)
+        lac, cid = parse_creg(raw)
+        if lac and cid:
+            break
+        print(f"🔁 CREG parse failed (attempt {i+1}), retrying…")
+        time.sleep(2)
+
     ser.close()
 
-    lac, cid = parse_creg(raw)
     if not lac or not cid:
-        print("❌ Could not parse LAC/CID:", repr(raw))
-        # still bring up GPRS so you regain Internet
+        print("❌ Could not parse LAC/CID after retries.")
+        # ensure we’re back on data link
         if not is_up():
             start_gprs()
         return None, None
 
-    # Step 3: now that you have tower info, ensure data link is up
+    # 4) bring up GPRS so Google + backend will work
     if not is_up():
         start_gprs()
 
-    # Step 4: query Google
-    payload = {
-        "cellTowers": [{
-            "cellId": int(cid, 16),
-            "locationAreaCode": int(lac, 16),
-            "mobileCountryCode": MCC,
-            "mobileNetworkCode": MNC
-        }]
-    }
+    # 5) query Google
+    payload = {"cellTowers":[{"cellId":int(cid,16),
+                               "locationAreaCode":int(lac,16),
+                               "mobileCountryCode":MCC,
+                               "mobileNetworkCode":MNC}]}
     try:
-        resp = requests.post(GEOLOC_URL, json=payload, timeout=10)
-        data = resp.json()
-        loc = data.get("location", {})
+        r = requests.post(GEOLOC_URL, json=payload, timeout=10)
+        loc = r.json().get("location",{})
         return loc.get("lat"), loc.get("lng")
     except Exception as e:
         print("❌ Google Geolocation API error:", e)
