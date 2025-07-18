@@ -1,9 +1,10 @@
+# ~/bees-backend/raspberry/gprs_manager.py
 import subprocess, time
 
 GPRS_SCRIPT = "/home/pi/bees-backend/raspberry/gprs_connect.sh"
 
 def kill_ppp():
-    """Tear down any existing PPP so /dev/serial0 is free."""
+    """Tear down old PPP daemons."""
     subprocess.run(["sudo","poff","-a"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["sudo","pkill","-9","-f","pppd"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     subprocess.run(["sudo","pkill","-9","-f","chat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -12,16 +13,17 @@ def kill_ppp():
     time.sleep(1)
 
 def start_gprs():
-    """Run our gprs_connect.sh (which backgrounds pppd + installs host‑routes)."""
+    """Run our connect script."""
     subprocess.Popen(
         ["sudo", GPRS_SCRIPT],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         start_new_session=True
     )
-    # give it time to finish
-    time.sleep(15)
+    # Give it enough time to finish
+    time.sleep(25)
 
 def is_up():
-    """Return True if ppp0 is up."""
-    out = subprocess.run(["ip","link","show","ppp0"], capture_output=True, text=True).stdout
-    return "state UP" in out
+    """Check ppp0 has an IP."""
+    return bool(subprocess.run(
+        ["ip","addr","show","ppp0"], capture_output=True, text=True
+    ).stdout.split("inet "))

@@ -19,39 +19,33 @@ def parse_creg(resp):
                 return parts[2], parts[3]
     return None, None
 
-def get_cell_location_via_google(max_retries=5):
-    # 1) free the serial port
+def get_cell_location_via_google(max_retries=8, delay_between=3):
     kill_ppp()
-
-    # 2) open & configure UART
     ser = serial.Serial('/dev/serial0', baudrate=115200, timeout=2)
-    time.sleep(2)
+    time.sleep(3)
 
-    # 3) loop until we get a usable LAC/CID
-    lac = cid = None
+    lac, cid = None, None
     for i in range(max_retries):
         _ = send_at(ser, "AT+CREG=2", delay=2)
         raw = send_at(ser, "AT+CREG?", delay=2)
         lac, cid = parse_creg(raw)
         if lac and cid:
             break
-        print(f"🔁 CREG parse failed (attempt {i+1}), retrying…")
-        time.sleep(2)
+        print(f"🔁 [GPS] CREG parse failed (attempt {i+1}/{max_retries}), retrying…")
+        time.sleep(delay_between)
 
     ser.close()
-
-    if not lac or not cid:
-        print("❌ Could not parse LAC/CID after retries.")
-        # ensure we’re back on data link
+    if not (lac and cid):
+        print("❌ [GPS] Could not parse LAC/CID after retries.")
         if not is_up():
             start_gprs()
         return None, None
 
-    # 4) bring up GPRS so Google + backend will work
+    # bring up GPRS so Google + backend will work
     if not is_up():
         start_gprs()
 
-    # 5) query Google
+    # query Google
     payload = {"cellTowers":[{"cellId":int(cid,16),
                                "locationAreaCode":int(lac,16),
                                "mobileCountryCode":MCC,
