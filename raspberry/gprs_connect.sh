@@ -1,64 +1,22 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-################################
-# 1) Tear down any old PPP     #
-################################
-sudo poff -a        || true
-sudo pkill -9 -f pppd || true
-sudo pkill -9 -f chat || true
-sudo rm -f /var/lock/LCK..ttyS0 /var/lock/LCK..serial0 || true
+# 1) clean up any old PPP chatter/locks
+sudo poff -a   >/dev/null 2>&1 || true
+sudo pkill -9 -f pppd   >/dev/null 2>&1 || true
+sudo pkill -9 -f chat   >/dev/null 2>&1 || true
+sudo rm -f /var/lock/LCK..ttyS0 /var/lock/LCK..serial0   >/dev/null 2>&1 || true
 
-################################
-# 2) Dial out (in background)  #
-################################
-sudo pon &
+# 2) dial your provider (uses /etc/ppp/peers/provider)
+sudo pon provider
 
-################################
-# 3) Wait for ppp0 to come up  #
-################################
-echo -n "⏳ Waiting for ppp0"
-for i in {1..15}; do
-  if ip addr show ppp0 | grep -q "inet "; then
-    echo " ✅"
-    break
-  fi
-  echo -n "."
+# 3) wait until ppp0 really exists
+echo "⏳ Waiting for ppp0…"
+while ! ip addr show ppp0 >/dev/null 2>&1; do
   sleep 1
 done
 
-################################
-# 4) Reset DNS to carrier + CF  #
-################################
-sudo rm -f /etc/resolv.conf
-# link carrier DNS
-sudo ln -s /etc/ppp/resolv.conf /etc/resolv.conf
-# append public ones
-printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" \
-  | sudo tee -a /etc/resolv.conf >/dev/null
+# 4) remove any lingering wlan0 default route so PPP truly wins
+sudo ip route del default dev wlan0 2>/dev/null || true
 
-################################
-# 5) Flush ALL default routes  #
-################################
-# this will remove both the wlan0 and any other default
-sudo ip route flush default
-
-################################
-# 6) Force default → ppp0      #
-################################
-sudo ip route add default dev ppp0
-
-################################
-# 7) Re‑add LAN (wlan0) route  #
-################################
-# replace the CIDR & src with your actual LAN net & IP
-sudo ip route add 10.101.64.0/18 dev wlan0 proto kernel scope link src 10.101.75.176
-
-################################
-# 8) (Optional) Pin API IP     #
-################################
-API_IP=$(getent ahostsv4 bees-backend.aiiot.center \
-         | awk 'NR==1{print $1; exit}')
-sudo ip route replace $API_IP/32 dev ppp0
-
-echo "✅ PPP up; default→ppp0; LAN→wlan0; DNS OK"
+echo "✅ PPP0 is up; default now via ppp0"
