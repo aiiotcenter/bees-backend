@@ -11,8 +11,8 @@ from sensors.gps_module import get_cell_location_via_google
 from gprs_manager import start_gprs, is_up
 
 # Configuration
-# API_URL      = "http://bees-backend.aiiot.center/api/records"
-API_URL      = "http://198.187.28.245/api/records"
+API_URL      = "http://bees-backend.aiiot.center/api/records"
+# API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
 
