@@ -3,12 +3,11 @@ import time
 import requests
 import subprocess
 import RPi.GPIO as GPIO
+import json
 
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
-from sensors.gps_module import get_cell_location_via_google
-from gprs_manager import start_gprs, is_up
 
 # Configuration
 API_URL      = "http://bees-backend.aiiot.center/api/records"
@@ -16,30 +15,71 @@ API_URL      = "http://bees-backend.aiiot.center/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
 
+# Path to your WiFi geolocation shell script
+WIFI_LOCATION_SCRIPT = "./wifi_location.sh"  # Update this path as needed
 
-# def which_interface(host):
-#     """
-#     Resolve hostname to IPv4 and ask the kernel which interface it'll use.
-#     """
-#     res = subprocess.run(
-#         ["getent", "ahostsv4", host], capture_output=True, text=True
-#     )
-#     ip = res.stdout.split()[0]
-#     route = subprocess.run(
-#         ["ip", "route", "get", ip], capture_output=True, text=True
-#     ).stdout.strip()
-#     return route
+
+def get_wifi_location():
+    """
+    Get location using the existing WiFi geolocation shell script
+    Returns (latitude, longitude) tuple or (0, 0) if failed
+    """
+    try:
+        print("🌐 Getting WiFi location via shell script...")
+        
+        # Run the shell script
+        result = subprocess.run(
+            ["/bin/bash", WIFI_LOCATION_SCRIPT],
+            capture_output=True, text=True, timeout=30
+        )
+        
+        if result.returncode != 0:
+            print(f"⚠️ Shell script failed: {result.stderr}")
+            return 0, 0
+        
+        # Parse output to extract latitude and longitude
+        output = result.stdout
+        lat, lon = 0, 0
+        
+        for line in output.split('\n'):
+            if 'Latitude:' in line:
+                try:
+                    lat = float(line.split('Latitude:')[1].strip())
+                except:
+                    pass
+            elif 'Longitude:' in line:
+                try:
+                    lon = float(line.split('Longitude:')[1].strip())
+                except:
+                    pass
+        
+        if lat != 0 and lon != 0:
+            print(f"📍 Location found: {lat}, {lon}")
+            return lat, lon
+        else:
+            print("⚠️ Could not parse coordinates from shell script output")
+            print(f"Script output: {output}")
+            return 0, 0
+            
+    except Exception as e:
+        print(f"⚠️ WiFi geolocation error: {e}")
+        return 0, 0
+
 
 def which_interface():
     """
     Show the kernel's current default route.  
     (This tells us whether ppp0 or wlan0 is being used.)
     """
-    out = subprocess.run(
-        ["ip", "route", "show", "default"],
-        capture_output=True, text=True
-    ).stdout
-    return out.strip()
+    try:
+        out = subprocess.run(
+            ["ip", "route", "show", "default"],
+            capture_output=True, text=True
+        ).stdout
+        return out.strip()
+    except Exception as e:
+        print(f"⚠️ Error getting interface info: {e}")
+        return "unknown"
 
 
 def setup_gpio():
@@ -63,7 +103,6 @@ def send_data(entry):
         print(f"⚠️ send_data error:", e)
 
 
-
 def main():
     setup_gpio()
     buffered = []
@@ -71,9 +110,9 @@ def main():
     try:
         # 1) collect sensor readings
         for _ in range(MAX_READINGS):
-            t,h = get_temp_humidity()
-            s   = monitor_sound()
-            door= read_ir_door_status()
+            t, h = get_temp_humidity()
+            s = monitor_sound()
+            door = read_ir_door_status()
             buffered.append({
                 "hiveId": "1",
                 "temperature": str(t),
@@ -91,20 +130,14 @@ def main():
             print(f"📦 Buffered {len(buffered)} readings.")
             time.sleep(2)
 
-        # 2) get location
-        print("🌐 Getting location via SIM900+Google…")
-        lat, lon = get_cell_location_via_google()
+        # 2) get location via WiFi geolocation shell script
+        lat, lon = get_wifi_location()
         if not lat or not lon:
             lat, lon = 0, 0
 
-        # 3) bring up GPRS if needed
-        if not is_up():
-            print("📲 Starting GPRS for data link…")
-            start_gprs()
-
-        # 4) send buffered data with coords
+        # 3) send buffered data with coordinates
         for entry in buffered:
-            entry["latitude"]  = str(lat)
+            entry["latitude"] = str(lat)
             entry["longitude"] = str(lon)
             print(f"📤 Sending entry: {entry}")
             send_data(entry)
