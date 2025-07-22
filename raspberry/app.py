@@ -19,50 +19,44 @@ MAX_READINGS = 3
 WIFI_LOCATION_SCRIPT = "./wifi_location.sh"  # Update this path as needed
 
 
-def get_wifi_location():
+def get_ip_location():
     """
-    Get location using the existing WiFi geolocation shell script
+    Get location using IP-based geolocation (works with any internet connection)
     Returns (latitude, longitude) tuple or (0, 0) if failed
     """
     try:
-        print("🌐 Getting WiFi location via shell script...")
+        print("🌐 Getting location via IP geolocation...")
         
-        # Run the shell script
-        result = subprocess.run(
-            ["/bin/bash", WIFI_LOCATION_SCRIPT],
-            capture_output=True, text=True, timeout=30
-        )
+        # Try multiple IP geolocation services
+        services = [
+            "http://ip-api.com/json/",
+            "https://ipapi.co/json/",
+            "https://freegeoip.app/json/"
+        ]
         
-        if result.returncode != 0:
-            print(f"⚠️ Shell script failed: {result.stderr}")
-            return 0, 0
+        for service in services:
+            try:
+                response = requests.get(service, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    
+                    # Different services use different field names
+                    lat = data.get('lat') or data.get('latitude')
+                    lon = data.get('lon') or data.get('longitude')
+                    
+                    if lat and lon:
+                        print(f"📍 Location found via {service}: {lat}, {lon}")
+                        return float(lat), float(lon)
+                        
+            except Exception as e:
+                print(f"⚠️ Failed to get location from {service}: {e}")
+                continue
         
-        # Parse output to extract latitude and longitude
-        output = result.stdout
-        lat, lon = 0, 0
-        
-        for line in output.split('\n'):
-            if 'Latitude:' in line:
-                try:
-                    lat = float(line.split('Latitude:')[1].strip())
-                except:
-                    pass
-            elif 'Longitude:' in line:
-                try:
-                    lon = float(line.split('Longitude:')[1].strip())
-                except:
-                    pass
-        
-        if lat != 0 and lon != 0:
-            print(f"📍 Location found: {lat}, {lon}")
-            return lat, lon
-        else:
-            print("⚠️ Could not parse coordinates from shell script output")
-            print(f"Script output: {output}")
-            return 0, 0
+        print("⚠️ All IP geolocation services failed")
+        return 0, 0
             
     except Exception as e:
-        print(f"⚠️ WiFi geolocation error: {e}")
+        print(f"⚠️ IP geolocation error: {e}")
         return 0, 0
 
 
@@ -130,8 +124,8 @@ def main():
             print(f"📦 Buffered {len(buffered)} readings.")
             time.sleep(2)
 
-        # 2) get location via WiFi geolocation shell script
-        lat, lon = get_wifi_location()
+        # 2) get location via IP geolocation
+        lat, lon = get_ip_location()
         if not lat or not lon:
             lat, lon = 0, 0
 
