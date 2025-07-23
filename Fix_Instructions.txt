@@ -1,0 +1,18 @@
+~~ Emergency Fix ~~
+# Add back the WiFi default route immediately
+sudo ip route add default via 10.101.127.254 dev wlan0 metric 50
+
+# Remove the duplicate cellular routes
+sudo ip route del default via 192.168.0.1 dev eth0
+
+# Test immediately
+ping -c 3 8.8.8.8
+
+
+~~ If that works, make it permanent ~~
+# Restart WiFi to get proper DHCP routes
+sudo dhclient -r wlan0
+sudo dhclient wlan0
+
+# Check routes are correct
+ip route show
