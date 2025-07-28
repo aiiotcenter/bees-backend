@@ -13,7 +13,7 @@ from sensors.ir import read_ir_door_status
 API_URL      = "http://bees-backend.aiiot.center/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
-MAX_READINGS = 3
+MAX_READINGS = 15
 
 # Google Geolocation API Key
 GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
@@ -294,4 +294,4 @@ def main():
 if __name__ == "__main__":
     while True:
         main()
-        time.sleep(10)
+        time.sleep(60000)
