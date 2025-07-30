@@ -255,7 +255,7 @@ def main():
                 "weight": 0,
                 "distance": 0,
                 "soundStatus": 1 if s else 0,
-                "isDoorOpen": 0 #1 if door else 0,
+                "isDoorOpen": 0, #1 if door else 0,
                 "numOfIn": 0,
                 "numOfOut": 0,
                 "latitude": "0",
