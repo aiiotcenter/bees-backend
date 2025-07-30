@@ -4,6 +4,7 @@ import requests
 import subprocess
 import RPi.GPIO as GPIO
 import json
+from datetime import datetime
 
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
@@ -14,6 +15,7 @@ API_URL      = "http://bees-backend.aiiot.center/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 5
+READING_INTERVAL = 180  # 3 minutes in seconds
 
 # Google Geolocation API Key
 GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
@@ -234,64 +236,115 @@ def send_data(entry):
         print(f"⚠️ send_data error:", e)
 
 
+def collect_sensor_reading():
+    """
+    Collect a single sensor reading
+    """
+    try:
+        t, h = get_temp_humidity()
+        s = monitor_sound()
+        door = read_ir_door_status()
+        
+        reading = {
+            "hiveId": "1",
+            "temperature": str(t),
+            "humidity": str(h),
+            "weight": 0,
+            "distance": 0,
+            "soundStatus": 1 if s else 0,
+            "isDoorOpen": 0, #1 if door else 0,
+            "numOfIn": 0,
+            "numOfOut": 0,
+            "latitude": "0",
+            "longitude": "0",
+            "status": True,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        print(f"📊 Sensor reading: T={t}°C, H={h}%, Sound={'Yes' if s else 'No'}, Door={'Open' if door else 'Closed'}")
+        return reading
+        
+    except Exception as e:
+        print(f"⚠️ Error collecting sensor reading: {e}")
+        return None
+
+
 def main():
     setup_gpio()
-    buffered = []
-
+    
     try:
-        # 0) Ensure cellular connection is the default route
+        # Ensure cellular connection is the default route
         if not ensure_cellular_route():
             print("⚠️ Warning: Cellular routing may not be optimal")
         
-        # 1) collect sensor readings
-        for _ in range(MAX_READINGS):
-            t, h = get_temp_humidity()
-            s = monitor_sound()
-            door = read_ir_door_status()
-            buffered.append({
-                "hiveId": "1",
-                "temperature": str(t),
-                "humidity": str(h),
-                "weight": 0,
-                "distance": 0,
-                "soundStatus": 1 if s else 0,
-                "isDoorOpen": 0, #1 if door else 0,
-                "numOfIn": 0,
-                "numOfOut": 0,
-                "latitude": "0",
-                "longitude": "0",
-                "status": True
-            })
-            print(f"📦 Buffered {len(buffered)} readings.")
-            time.sleep(2)
+        while True:
+            buffered = []
+            print(f"\n🔄 Starting new data collection cycle at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # 1) Collect sensor readings every 3 minutes for 15 minutes total
+            for reading_num in range(MAX_READINGS):
+                print(f"\n📈 Collecting reading {reading_num + 1}/{MAX_READINGS}")
+                
+                reading = collect_sensor_reading()
+                if reading:
+                    buffered.append(reading)
+                    print(f"📦 Buffered {len(buffered)} readings.")
+                else:
+                    print("⚠️ Failed to collect sensor reading, using default values")
+                    # Add a default reading to maintain timing
+                    buffered.append({
+                        "hiveId": "1",
+                        "temperature": "0",
+                        "humidity": "0",
+                        "weight": 0,
+                        "distance": 0,
+                        "soundStatus": 0,
+                        "isDoorOpen": 0,
+                        "numOfIn": 0,
+                        "numOfOut": 0,
+                        "latitude": "0",
+                        "longitude": "0",
+                        "status": False,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                
+                # Wait 3 minutes before next reading (except for the last reading)
+                if reading_num < MAX_READINGS - 1:
+                    print(f"⏱️  Waiting {READING_INTERVAL} seconds until next reading...")
+                    time.sleep(READING_INTERVAL)
 
-        # 2) Get location via cellular network (try advanced method first)
-        lat, lon = try_advanced_cellular_location()
-        if not lat or not lon:
-            # Fallback to standard cellular location
-            lat, lon = get_cellular_location()
-        
-        if not lat or not lon:
-            lat, lon = 0, 0
-            print("⚠️ Could not determine location")
+            # 2) Get location once per 15-minute cycle
+            print(f"\n🌍 Getting location after {MAX_READINGS} readings...")
+            lat, lon = try_advanced_cellular_location()
+            if not lat or not lon:
+                # Fallback to standard cellular location
+                lat, lon = get_cellular_location()
+            
+            if not lat or not lon:
+                lat, lon = 0, 0
+                print("⚠️ Could not determine location, using default (0, 0)")
+            else:
+                print(f"✅ Location acquired: {lat}, {lon}")
 
-        # 3) send buffered data with coordinates
-        for entry in buffered:
-            entry["latitude"] = str(lat)
-            entry["longitude"] = str(lon)
-            print(f"📤 Sending entry: {entry}")
-            send_data(entry)
-            time.sleep(2)
+            # 3) Send all buffered data with the same coordinates
+            print(f"\n📤 Sending {len(buffered)} readings to server...")
+            for i, entry in enumerate(buffered, 1):
+                entry["latitude"] = str(lat)
+                entry["longitude"] = str(lon)
+                print(f"📤 Sending reading {i}/{len(buffered)}: {entry}")
+                send_data(entry)
+                time.sleep(2)  # Small delay between API calls
 
-        print("✅ All data sent.")
+            print(f"✅ Completed cycle at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print("="*50)
 
     except KeyboardInterrupt:
-        print("🛑 Interrupted by user.")
+        print("\n🛑 Interrupted by user.")
+    except Exception as e:
+        print(f"⚠️ Unexpected error in main loop: {e}")
     finally:
         cleanup_gpio()
 
 
 if __name__ == "__main__":
-    while True:
-        main()
-        time.sleep(10)
+    main()
