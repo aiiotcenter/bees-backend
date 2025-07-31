@@ -236,6 +236,27 @@ def send_data(entry):
         print(f"⚠️ send_data error:", e)
 
 
+def send_location_data(latitude, longitude):
+    """
+    Send location data to the location endpoint
+    """
+    location_url = "https://bees-backend.aiiot.center/api/hives/check-location/1"
+    location_data = {
+        "latitude": latitude,
+        "longitude": longitude
+    }
+    
+    route = which_interface()
+    print(f"🛣️  Default route: {route}")
+    try:
+        r = requests.post(location_url, json=location_data, timeout=15)
+        print(f"📍 Location API→ {r.status_code} {r.text}")
+        return r.status_code == 200
+    except Exception as e:
+        print(f"⚠️ send_location_data error:", e)
+        return False
+
+
 def collect_sensor_reading():
     """
     Collect a single sensor reading
@@ -325,6 +346,14 @@ def main():
                 print("⚠️ Could not determine location, using default (0, 0)")
             else:
                 print(f"✅ Location acquired: {lat}, {lon}")
+                
+                # Send location data to the location endpoint
+                print(f"📍 Sending location data to location endpoint...")
+                location_sent = send_location_data(lat, lon)
+                if location_sent:
+                    print("✅ Location data sent successfully")
+                else:
+                    print("⚠️ Failed to send location data")
 
             # 3) Send all buffered data with the same coordinates
             print(f"\n📤 Sending {len(buffered)} readings to server...")
