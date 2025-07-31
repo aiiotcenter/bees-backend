@@ -341,19 +341,19 @@ def main():
                 # Fallback to standard cellular location
                 lat, lon = get_cellular_location()
             
-            if not lat or not lon:
-                lat, lon = 0, 0
-                print("⚠️ Could not determine location, using default (0, 0)")
-            else:
-                print(f"✅ Location acquired: {lat}, {lon}")
+            # if not lat or not lon:
+            #     lat, lon = 0, 0
+            #     print("⚠️ Could not determine location, using default (0, 0)")
+            # else:
+            #     print(f"✅ Location acquired: {lat}, {lon}")
                 
-                # Send location data to the location endpoint
-                print(f"📍 Sending location data to location endpoint...")
-                location_sent = send_location_data(lat, lon)
-                if location_sent:
-                    print("✅ Location data sent successfully")
-                else:
-                    print("⚠️ Failed to send location data")
+            #     # Send location data to the location endpoint
+            #     print(f"📍 Sending location data to location endpoint...")
+            #     location_sent = send_location_data(lat, lon)
+            #     if location_sent:
+            #         print("✅ Location data sent successfully")
+            #     else:
+            #         print("⚠️ Failed to send location data")
 
             # 3) Send all buffered data with the same coordinates
             print(f"\n📤 Sending {len(buffered)} readings to server...")
