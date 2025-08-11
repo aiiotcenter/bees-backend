@@ -265,6 +265,7 @@ def collect_sensor_reading():
         t, h = get_temp_humidity()
         s = monitor_sound()
         door = read_ir_door_status()
+        recordedAt = datetime.now(timezone.utc).isoformat(timespec='milliseconds')
         
         reading = {
             "hiveId": "1",
@@ -279,8 +280,9 @@ def collect_sensor_reading():
             "latitude": "0",
             "longitude": "0",
             "status": True,
-            "timestamp": datetime.now().isoformat()
+            "recordedAt": recordedAt
         }
+        print("Recorded At: " + recordedAt)
         
         print(f"📊 Sensor reading: T={t}°C, H={h}%, Sound={'Yes' if s else 'No'}, Door={'Open' if door else 'Closed'}")
         return reading
