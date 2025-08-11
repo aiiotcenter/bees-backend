@@ -4,7 +4,8 @@ import requests
 import subprocess
 import RPi.GPIO as GPIO
 import json
-from datetime import datetime
+
+from datetime import datetime, timezone
 
 from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
