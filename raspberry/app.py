@@ -14,12 +14,12 @@ from sensors.ir import read_ir_door_status
 API_URL      = "http://bees-backend.aiiot.center/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
-MAX_READINGS = 5
-READING_INTERVAL = 180  # 3 minutes in seconds
+MAX_READINGS = 3
+READING_INTERVAL = 1800  # 30 minutes in seconds
 
 # Google Geolocation API Key
 GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
-USB_INTERFACE = "eth0"  # ZTE WCDMA modem creates eth0 interface
+USB_INTERFACE = "eth1"  # ZTE WCDMA modem creates eth1 interface
 
 
 def get_cellular_location():
@@ -31,22 +31,22 @@ def get_cellular_location():
     try:
         print("🌐 Getting cellular location via Google Geolocation API...")
         
-        # Force request through cellular interface by binding to eth0 IP
-        eth0_ip = None
+        # Force request through cellular interface by binding to eth1 IP
+        eth1_ip = None
         try:
             result = subprocess.run(
                 ["ip", "addr", "show", USB_INTERFACE],
                 capture_output=True, text=True
             )
-            # Extract IP address from eth0
+            # Extract IP address from eth1
             for line in result.stdout.split('\n'):
                 if 'inet ' in line and 'scope global' in line:
-                    eth0_ip = line.split('inet ')[1].split('/')[0].strip()
+                    eth1_ip = line.split('inet ')[1].split('/')[0].strip()
                     break
         except:
             pass
         
-        print(f"📡 Using cellular IP: {eth0_ip}")
+        print(f"📡 Using cellular IP: {eth1_ip}")
         
         # Create payload optimized for cellular location
         # Google uses multiple signals: IP geolocation + cellular network characteristics
@@ -63,7 +63,7 @@ def get_cellular_location():
         url = f"https://www.googleapis.com/geolocation/v1/geolocate?key={GOOGLE_API_KEY}"
         headers = {"Content-Type": "application/json"}
         
-        # Make request (will automatically go through eth0 since it's default route)
+        # Make request (will automatically go through eth1 since it's default route)
         response = requests.post(url, json=payload, headers=headers, timeout=15)
         
         if response.status_code == 200:
@@ -104,10 +104,10 @@ def try_advanced_cellular_location():
                 ["cat", "/proc/net/wireless"],
                 capture_output=True, text=True
             )
-            if "eth0" in result.stdout:
+            if "eth1" in result.stdout:
                 # Parse signal info if available
                 for line in result.stdout.split('\n'):
-                    if "eth0" in line:
+                    if "eth1" in line:
                         parts = line.split()
                         if len(parts) >= 4:
                             cellular_info["signalStrength"] = int(parts[3])
@@ -148,12 +148,12 @@ def try_advanced_cellular_location():
 
 def ensure_cellular_route():
     """
-    Ensure cellular modem (eth0) is the default route
+    Ensure cellular modem (eth1) is the default route
     """
     try:
         print("🔧 Ensuring cellular connection is active...")
         
-        # Check if eth0 exists and has IP
+        # Check if eth1 exists and has IP
         result = subprocess.run(
             ["ip", "addr", "show", USB_INTERFACE],
             capture_output=True, text=True
@@ -164,15 +164,15 @@ def ensure_cellular_route():
             return False
         
         # Extract current IP
-        eth0_ip = None
+        eth1_ip = None
         for line in result.stdout.split('\n'):
             if 'inet ' in line and 'scope global' in line:
-                eth0_ip = line.split('inet ')[1].split('/')[0].strip()
+                eth1_ip = line.split('inet ')[1].split('/')[0].strip()
                 break
         
-        print(f"📡 Cellular interface {USB_INTERFACE} has IP: {eth0_ip}")
+        print(f"📡 Cellular interface {USB_INTERFACE} has IP: {eth1_ip}")
         
-        # Check if eth0 is default route
+        # Check if eth1 is default route
         result = subprocess.run(
             ["ip", "route", "show", "default"],
             capture_output=True, text=True
@@ -292,7 +292,7 @@ def collect_sensor_reading():
 
 def main():
     setup_gpio()
-    
+    print("Bee-Hive is ON.")
     try:
         # Ensure cellular connection is the default route
         if not ensure_cellular_route():
@@ -302,7 +302,7 @@ def main():
             buffered = []
             print(f"\n🔄 Starting new data collection cycle at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
-            # 1) Collect sensor readings every 3 minutes for 15 minutes total
+            # 1) Collect sensor readings every 30 minutes for 90 minutes total
             for reading_num in range(MAX_READINGS):
                 print(f"\n📈 Collecting reading {reading_num + 1}/{MAX_READINGS}")
                 
@@ -334,7 +334,7 @@ def main():
                     print(f"⏱️  Waiting {READING_INTERVAL} seconds until next reading...")
                     time.sleep(READING_INTERVAL)
 
-            # 2) Get location once per 15-minute cycle
+            # 2) Get location once per 90-minute cycle
             print(f"\n🌍 Getting location after {MAX_READINGS} readings...")
             lat, lon = try_advanced_cellular_location()
             if not lat or not lon:
