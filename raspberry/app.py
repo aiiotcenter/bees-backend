@@ -22,6 +22,23 @@ READING_INTERVAL = 180  # 30 minutes in seconds
 GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
 USB_INTERFACE = "eth1"  # ZTE WCDMA modem creates eth1 interface
 
+def send_status_update(hive_id: int, status: bool):
+    """
+    Send a status update (true/false) to the backend
+    """
+    status_url = f"http://bees-backend.aiiot.center/api/hives/status/{hive_id}"
+    payload = {"status": status}
+    route = which_interface()
+    print(f"🛣️  Default route: {route} (sending hive status)")
+
+    try:
+        r = requests.put(status_url, json=payload, timeout=15)
+        print(f"🔔 Status API→ {r.status_code} {r.text}")
+        return r.status_code == 200
+    except Exception as e:
+        print(f"⚠️ send_status_update error: {e}")
+        return False
+
 
 def get_cellular_location():
     """
@@ -296,6 +313,10 @@ def collect_sensor_reading():
 def main():
     setup_gpio()
     print("Bee-Hive is ON.")
+
+    # Send initial status = True to backend
+    send_status_update(hive_id=1, status=True)
+
     try:
         # Ensure cellular connection is the default route
         if not ensure_cellular_route():
