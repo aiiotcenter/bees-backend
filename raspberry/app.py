@@ -12,7 +12,7 @@ from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 
 # Configuration
-API_URL      = "http://bees-backend.aiiot.center/api/records"
+API_URL      = "https://bees-backend.aiiot.center/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
@@ -26,7 +26,7 @@ def send_status_update(hive_id: int, status: bool):
     """
     Send a status update (true/false) to the backend
     """
-    status_url = f"http://bees-backend.aiiot.center/api/hives/status/{hive_id}"
+    status_url = f"https://bees-backend.aiiot.center/api/hives/status/{hive_id}"
     payload = {"status": status}
     route = which_interface()
     print(f"🛣️  Default route: {route} (sending hive status)")
