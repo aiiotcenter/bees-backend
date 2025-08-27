@@ -57,7 +57,7 @@ sudo ip route add 10.101.64.0/18 dev wlan0 proto kernel scope link src 10.101.75
 ################################
 # 8) (Optional) Pin API IP     #
 ################################
-API_IP=$(getent ahostsv4 bees-backend.aiiot.center \
+API_IP=$(getent ahostsv4 http://100.70.97.126:9602 \
          | awk 'NR==1{print $1; exit}')
 sudo ip route replace $API_IP/32 dev ppp0
 
