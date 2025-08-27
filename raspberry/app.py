@@ -4,12 +4,9 @@ import time
 import json
 import threading
 import subprocess
+import shutil
 from typing import Tuple
 
-# ──────────────────────────────────────────────────────────────────────────────
-# External deps expected: uhubctl, requests, RPi.GPIO
-# Your existing modules:
-# ──────────────────────────────────────────────────────────────────────────────
 import requests
 import RPi.GPIO as GPIO
 
@@ -19,30 +16,29 @@ from sensors.ir import read_ir_door_status
 from sensors.gps_module import get_cell_location_via_google
 from gprs_manager import start_gprs, is_up
 
-# ──────────────────────────────────────────────────────────────────────────────
-# CONFIG
-# ──────────────────────────────────────────────────────────────────────────────
+# ── CONFIG ────────────────────────────────────────────────────────────────────
 API_URL        = "http://100.70.97.126:9602/api/records"
-API_HOST       = "http://100.70.97.126:9602"
-MAX_READINGS   = 3                  # how many sensor samples to buffer each cycle
-SEND_INTERVAL  = 20 * 60            # seconds between send cycles (20 minutes)
-USB_ENUM_DELAY = 8                  # wait after turning USB ON
-KEEP_ON_AFTER_SEND = 5              # keep USB ON briefly after sending
+MAX_READINGS   = 3
+SEND_INTERVAL  = 20 * 60
+USB_ENUM_DELAY = 8
+KEEP_ON_AFTER_SEND = 5
 
-# Pi 4 hubs: USB3 root hub "2" (ports 1-4), USB2 root hub "1", upstream port "1"
-USB3_HUB = "2"
-USB3_PORT_RANGE = "1-4"
-USB2_ROOT = "1"
+USB3_HUB = "2"          # Pi 4 USB3 root hub
+USB3_PORT_RANGE = "1-4" # all four ports
+USB2_ROOT = "1"         # Pi 4 USB2 root hub
 USB2_UPSTREAM_PORT = "1"
+MODEM_VIDPID = "19d2:1405"  # ZTE
 
-MODEM_VIDPID = "19d2:1405"          # optional presence check
+GUARD_INTERVAL = 1.0    # seconds
 
-# ──────────────────────────────────────────────────────────────────────────────
-# UTILITIES
-# ──────────────────────────────────────────────────────────────────────────────
+# Resolve uhubctl path (systemd/cron may have different PATH)
+UHUBCTL = shutil.which("uhubctl") or "/usr/sbin/uhubctl"
+
+# ── UTILITIES ────────────────────────────────────────────────────────────────
 def run(cmd, check=True, capture=False):
     if capture:
-        return subprocess.run(cmd, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True).stdout
+        p = subprocess.run(cmd, check=check, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        return p.stdout
     subprocess.run(cmd, check=check)
 
 def sudo_prefix():
@@ -61,36 +57,39 @@ def lsusb_has(vidpid: str) -> bool:
     except Exception:
         return False
 
-def request_post(url: str, payload: dict, timeout: int = 15) -> Tuple[int, str]:
-    try:
-        r = requests.post(url, json=payload, timeout=timeout)
-        return (r.status_code, r.text)
-    except Exception as e:
-        return (-1, str(e))
+def wait_for_lsusb(vidpid: str, present: bool, timeout_s: float) -> bool:
+    t0 = time.time()
+    while time.time() - t0 < timeout_s:
+        if lsusb_has(vidpid) == present:
+            return True
+        time.sleep(0.5)
+    return False
 
-# ──────────────────────────────────────────────────────────────────────────────
-# USB POWER CONTROL + GUARD
-# ──────────────────────────────────────────────────────────────────────────────
+# ── USB POWER CONTROL + GUARD ────────────────────────────────────────────────
 def usb_all_off():
     sp = sudo_prefix()
-    # USB3 ports off
-    run(sp + ["uhubctl","-l",USB3_HUB,"-p",USB3_PORT_RANGE,"-a","off"], check=False)
-    # USB2 upstream off (kills the whole USB2 tree incl. hub 1-1)
-    run(sp + ["uhubctl","-l",USB2_ROOT,"-p",USB2_UPSTREAM_PORT,"-a","off"], check=False)
+    # OFF USB3
+    cmd1 = sp + [UHUBCTL, "-l", USB3_HUB, "-p", USB3_PORT_RANGE, "-a", "off"]
+    # OFF USB2 upstream
+    cmd2 = sp + [UHUBCTL, "-l", USB2_ROOT, "-p", USB2_UPSTREAM_PORT, "-a", "off"]
+    print("UHUB→", " ".join(cmd1)); run(cmd1, check=True)
+    print("UHUB→", " ".join(cmd2)); run(cmd2, check=True)
 
 def usb_all_on():
     sp = sudo_prefix()
-    # Bring USB2 upstream first, then USB3 ports
-    run(sp + ["uhubctl","-l",USB2_ROOT,"-p",USB2_UPSTREAM_PORT,"-a","on"], check=False)
-    run(sp + ["uhubctl","-l",USB3_HUB,"-p",USB3_PORT_RANGE,"-a","on"], check=False)
+    # ON USB2 upstream first, then USB3 (order matters)
+    cmd1 = sp + [UHUBCTL, "-l", USB2_ROOT, "-p", USB2_UPSTREAM_PORT, "-a", "on"]
+    cmd2 = sp + [UHUBCTL, "-l", USB3_HUB, "-p", USB3_PORT_RANGE, "-a", "on"]
+    print("UHUB→", " ".join(cmd1)); run(cmd1, check=True)
+    print("UHUB→", " ".join(cmd2)); run(cmd2, check=True)
 
 class USBOffGuard:
     """Re-asserts USB OFF every second while active. Pause before ON; resume after OFF."""
-    def __init__(self, interval_sec: float = 1.0):
+    def __init__(self, interval_sec: float = GUARD_INTERVAL):
         self.interval = interval_sec
         self._stop = threading.Event()
-        self._paused = threading.Event()
-        self._paused.clear()  # active
+        self._paused = threading.Event()  # when set => paused
+        self._paused.clear()              # start active
 
     def start(self):
         t = threading.Thread(target=self._worker, daemon=True)
@@ -100,17 +99,24 @@ class USBOffGuard:
     def _worker(self):
         while not self._stop.is_set():
             if not self._paused.is_set():
-                try: usb_all_off()
-                except Exception: pass
+                try:
+                    usb_all_off()
+                except Exception as e:
+                    print("Guard OFF error:", e)
             time.sleep(self.interval)
 
-    def pause(self):  self._paused.set()
-    def resume(self): self._paused.clear()
-    def stop(self):   self._stop.set()
+    def pause(self):
+        print("🛑 Pausing guard")
+        self._paused.set()
 
-# ──────────────────────────────────────────────────────────────────────────────
-# GPIO
-# ──────────────────────────────────────────────────────────────────────────────
+    def resume(self):
+        print("🟢 Resuming guard")
+        self._paused.clear()
+
+    def stop(self):
+        self._stop.set()
+
+# ── GPIO ─────────────────────────────────────────────────────────────────────
 def setup_gpio():
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)
@@ -120,23 +126,17 @@ def setup_gpio():
 def cleanup_gpio():
     GPIO.cleanup()
 
-# ──────────────────────────────────────────────────────────────────────────────
-# SENDING LOGIC
-# ──────────────────────────────────────────────────────────────────────────────
+# ── SENDING LOGIC ────────────────────────────────────────────────────────────
 def send_data(entry: dict):
     route = which_interface()
     print(f"🛣️ Default route: {route}")
-    code, text = request_post(API_URL, entry, timeout=15)
-    print(f"API→ {code} {text[:200]}")
+    try:
+        r = requests.post(API_URL, json=entry, timeout=15)
+        print(f"API→ {r.status_code} {r.text[:200]}")
+    except Exception as e:
+        print("⚠️ send_data error:", e)
 
 def do_one_send_cycle(guard: USBOffGuard):
-    """
-    1) Collect sensor data while USB is OFF
-    2) Turn USB ON, wait for enumeration
-    3) Ensure GPRS up
-    4) Send buffered data
-    5) Turn USB OFF and resume guard
-    """
     # 1) Read sensors (USB OFF)
     buffered = []
     for _ in range(MAX_READINGS):
@@ -160,7 +160,7 @@ def do_one_send_cycle(guard: USBOffGuard):
         print(f"📦 Buffered {len(buffered)} readings.")
         time.sleep(2)
 
-    # 2) Get location (move below ON if your method needs the modem)
+    # 2) Location (move below ON if your method needs the modem)
     print("🌐 Getting location via SIM900+Google…")
     try:
         lat, lon = get_cell_location_via_google()
@@ -170,16 +170,21 @@ def do_one_send_cycle(guard: USBOffGuard):
     if not lat or not lon:
         lat, lon = (0, 0)
 
-    # 3) Turn USB ON + wait for enumeration
-    print("🔌 Turning ALL USB ON…")
+    # 3) USB ON + wait for enumeration
     guard.pause()
     usb_all_on()
+    print("⏳ Waiting for USB enumeration…")
     time.sleep(USB_ENUM_DELAY)
+
+    # Optional: wait for modem to show up (adjust VID:PID if needed)
+    if MODEM_VIDPID:
+        appeared = wait_for_lsusb(MODEM_VIDPID, present=True, timeout_s=20)
+        print(f"🔎 Modem present after ON: {appeared}")
 
     # 4) Bring up GPRS if needed
     try:
         if not is_up():
-            print("📲 Starting GPRS for data link…")
+            print("📲 Starting GPRS…")
             start_gprs()
     except Exception as e:
         print("⚠️ GPRS bring-up error:", e)
@@ -195,36 +200,39 @@ def do_one_send_cycle(guard: USBOffGuard):
     time.sleep(KEEP_ON_AFTER_SEND)
 
     # 6) USB OFF + resume guard
-    print("🪫 Turning ALL USB OFF…")
     usb_all_off()
+    # Optional: verify modem gone
+    if MODEM_VIDPID:
+        gone = wait_for_lsusb(MODEM_VIDPID, present=False, timeout_s=10)
+        print(f"🪫 Modem gone after OFF: {gone}")
     guard.resume()
-    print("🛡️ Guard resumed (USB stays OFF).")
 
-# ──────────────────────────────────────────────────────────────────────────────
-# MAIN LOOP
-# ──────────────────────────────────────────────────────────────────────────────
+# ── MAIN LOOP ────────────────────────────────────────────────────────────────
 def main():
+    if not os.path.exists(UHUBCTL):
+        raise RuntimeError(f"uhubctl not found at {UHUBCTL}. Install it: sudo apt install uhubctl")
+
     setup_gpio()
 
-    # Force USB OFF immediately on startup (so you're dark from the get-go)
+    # Force OFF immediately so we start dark
+    print("🔌 Forcing ALL USB OFF at startup…")
     usb_all_off()
 
-    guard = USBOffGuard(interval_sec=1.0)
+    guard = USBOffGuard(interval_sec=GUARD_INTERVAL)
     try:
         guard.start()
-        print("🛡️ USB OFF guard is active.")
+        print("🛡️ USB OFF guard active.")
 
         if os.getenv("SINGLE_CYCLE") == "1":
-            # one send then exit (quick test mode)
             do_one_send_cycle(guard)
             return
 
         while True:
-            start_ts = time.time()
+            t0 = time.time()
             do_one_send_cycle(guard)
-            elapsed = time.time() - start_ts
+            elapsed = time.time() - t0
             sleep_left = max(0, SEND_INTERVAL - elapsed)
-            print(f"⏱️ Waiting {int(sleep_left)}s until next cycle…")
+            print(f"⏱️ Sleeping {int(sleep_left)}s until next cycle…")
             time.sleep(sleep_left)
 
     except KeyboardInterrupt:
