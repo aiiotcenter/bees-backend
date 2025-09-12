@@ -36,7 +36,7 @@ import adafruit_dht
 import board
 import time
 
-DHT_SENSOR = adafruit_dht.DHT11(board.D23)  # GPIO 23
+DHT_SENSOR = adafruit_dht.DHT22(board.D23)  # GPIO 23
 
 # Global variables to store last valid readings
 last_temperature = 27.0  # Default fallback
