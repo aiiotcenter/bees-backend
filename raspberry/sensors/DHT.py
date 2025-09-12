@@ -67,7 +67,7 @@ import Adafruit_DHT
 import time
 
 # Sensor type - change this based on your sensor
-SENSOR_TYPE = Adafruit_DHT.DHT11  # or Adafruit_DHT.DHT22
+SENSOR_TYPE = Adafruit_DHT.DHT22  # or Adafruit_DHT.DHT22
 DHT_PIN = 23
 
 # Global variables to store last valid readings
