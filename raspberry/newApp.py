@@ -816,7 +816,7 @@ def main():
             if not lat or not lon:
                 # Fallback to standard cellular location
                 # lat, lon = get_cellular_location()
-                lat, lon = 35.226, 33.318
+                lat, lon = 35.3476, 33.1505
             
             if not lat or not lon:
                 lat, lon = 0, 0
