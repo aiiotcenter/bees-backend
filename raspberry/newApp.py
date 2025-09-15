@@ -551,8 +551,10 @@ def try_advanced_cellular_location():
         if response.status_code == 200:
             data = response.json()
             if 'location' in data:
-                lat = data['location']['lat']
-                lng = data['location']['lng']
+                # lat = data['location']['lat']
+                # lng = data['location']['lng']
+                lat = 35.3476
+                lng = 33.1505
                 accuracy = data.get('accuracy', 'unknown')
                 print(f"📍 Advanced cellular location: {lat}, {lng} (accuracy: {accuracy}m)")
                 return lat, lng
@@ -815,8 +817,7 @@ def main():
             lat, lon = try_advanced_cellular_location()
             if not lat or not lon:
                 # Fallback to standard cellular location
-                # lat, lon = get_cellular_location()
-                lat, lon = 35.3476, 33.1505
+                lat, lon = get_cellular_location()
             
             if not lat or not lon:
                 lat, lon = 0, 0
