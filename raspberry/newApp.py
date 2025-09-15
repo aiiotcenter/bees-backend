@@ -125,10 +125,9 @@ def save_sensor_reading_offline(reading):
         ))
         
         conn.commit()
-        reading_id = cursor.lastrowid
         conn.close()
         
-        print(f"💾 Sensor reading saved offline (ID: {reading_id})")
+        print(f"💾 Sensor reading saved offline (ID: {cursor.lastrowid})")
         return True
         
     except Exception as e:
@@ -149,10 +148,9 @@ def save_status_update_offline(hive_id, status):
         ''', (hive_id, status))
         
         conn.commit()
-        update_id = cursor.lastrowid
         conn.close()
         
-        print(f"💾 Status update saved offline (ID: {update_id})")
+        print(f"💾 Status update saved offline (ID: {cursor.lastrowid})")
         return True
         
     except Exception as e:
@@ -173,10 +171,9 @@ def save_location_data_offline(latitude, longitude):
         ''', (latitude, longitude))
         
         conn.commit()
-        location_id = cursor.lastrowid
         conn.close()
         
-        print(f"💾 Location data saved offline (ID: {location_id})")
+        print(f"💾 Location data saved offline (ID: {cursor.lastrowid})")
         return True
         
     except Exception as e:
@@ -257,13 +254,13 @@ def send_pending_data():
                     UPDATE sensor_readings SET sent = TRUE WHERE id = ?
                 ''', (reading_id,))
                 total_sent += 1
-                print(f"📤 ✅ Sent offline sensor reading (ID: {reading_id})")
+                print(f"📤 Sent offline sensor reading (ID: {reading_id})")
             else:
                 # Increment retry count
                 cursor.execute('''
                     UPDATE sensor_readings SET retry_count = retry_count + 1 WHERE id = ?
                 ''', (reading_id,))
-                print(f"📤 ❌ Failed to send sensor reading (ID: {reading_id})")
+                print(f"⚠️ Failed to send sensor reading (ID: {reading_id})")
         
         # Send pending status updates
         cursor.execute('''
@@ -284,12 +281,12 @@ def send_pending_data():
                     UPDATE status_updates SET sent = TRUE WHERE id = ?
                 ''', (update_id,))
                 total_sent += 1
-                print(f"📤 ✅ Sent offline status update (ID: {update_id})")
+                print(f"📤 Sent offline status update (ID: {update_id})")
             else:
                 cursor.execute('''
                     UPDATE status_updates SET retry_count = retry_count + 1 WHERE id = ?
                 ''', (update_id,))
-                print(f"📤 ❌ Failed to send status update (ID: {update_id})")
+                print(f"⚠️ Failed to send status update (ID: {update_id})")
         
         # Send pending location data
         cursor.execute('''
@@ -310,12 +307,12 @@ def send_pending_data():
                     UPDATE location_data SET sent = TRUE WHERE id = ?
                 ''', (location_id,))
                 total_sent += 1
-                print(f"📤 ✅ Sent offline location data (ID: {location_id})")
+                print(f"📤 Sent offline location data (ID: {location_id})")
             else:
                 cursor.execute('''
                     UPDATE location_data SET retry_count = retry_count + 1 WHERE id = ?
                 ''', (location_id,))
-                print(f"📤 ❌ Failed to send location data (ID: {location_id})")
+                print(f"⚠️ Failed to send location data (ID: {location_id})")
         
         conn.commit()
         conn.close()
@@ -333,56 +330,48 @@ def send_pending_data():
 def cleanup_old_data():
     """
     Clean up old sent data and failed records that exceeded max retry attempts
-    Keep sent data for 1 day for debugging purposes, failed data for 3 days
+    Keep data for 7 days for debugging purposes
     """
     try:
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # Delete sent records older than 1 day
+        # Delete sent records older than 7 days
         cursor.execute('''
             DELETE FROM sensor_readings 
-            WHERE sent = TRUE AND created_at < datetime('now', '-1 day')
+            WHERE sent = TRUE AND created_at < datetime('now', '-7 days')
         ''')
-        deleted_readings = cursor.rowcount
         
         cursor.execute('''
             DELETE FROM status_updates 
-            WHERE sent = TRUE AND created_at < datetime('now', '-1 day')
+            WHERE sent = TRUE AND created_at < datetime('now', '-7 days')
         ''')
-        deleted_status = cursor.rowcount
         
         cursor.execute('''
             DELETE FROM location_data 
-            WHERE sent = TRUE AND created_at < datetime('now', '-1 day')
+            WHERE sent = TRUE AND created_at < datetime('now', '-7 days')
         ''')
-        deleted_location = cursor.rowcount
         
-        # Delete failed records that exceeded max retries and are older than 3 days
+        # Delete failed records that exceeded max retries and are older than 1 day
         cursor.execute('''
             DELETE FROM sensor_readings 
-            WHERE retry_count >= ? AND created_at < datetime('now', '-3 days')
+            WHERE retry_count >= ? AND created_at < datetime('now', '-1 day')
         ''', (MAX_RETRY_ATTEMPTS,))
-        deleted_failed_readings = cursor.rowcount
         
         cursor.execute('''
             DELETE FROM status_updates 
-            WHERE retry_count >= ? AND created_at < datetime('now', '-3 days')
+            WHERE retry_count >= ? AND created_at < datetime('now', '-1 day')
         ''', (MAX_RETRY_ATTEMPTS,))
-        deleted_failed_status = cursor.rowcount
         
         cursor.execute('''
             DELETE FROM location_data 
-            WHERE retry_count >= ? AND created_at < datetime('now', '-3 days')
+            WHERE retry_count >= ? AND created_at < datetime('now', '-1 day')
         ''', (MAX_RETRY_ATTEMPTS,))
-        deleted_failed_location = cursor.rowcount
         
         conn.commit()
         conn.close()
         
-        total_deleted = deleted_readings + deleted_status + deleted_location + deleted_failed_readings + deleted_failed_status + deleted_failed_location
-        if total_deleted > 0:
-            print(f"🧹 Cleaned up {total_deleted} old records (sent: {deleted_readings + deleted_status + deleted_location}, failed: {deleted_failed_readings + deleted_failed_status + deleted_failed_location})")
+        print("🧹 Cleaned up old data")
         
     except Exception as e:
         print(f"⚠️ Error cleaning up old data: {e}")
@@ -444,11 +433,11 @@ def send_status_update_direct(hive_id: int, status: bool):
     try:
         r = requests.put(status_url, json=payload, timeout=15)
         print(f"🔔 Status API→ {r.status_code} {r.text}")
-        # Accept both 200 (OK) and 201 (Created) as success
-        return r.status_code in [200, 201]
+        return r.ok
     except Exception as e:
         print(f"⚠️ send_status_update_direct error: {e}")
         return False
+
 
 
 def get_cellular_location():
@@ -678,10 +667,10 @@ def send_data_direct(entry):
     try:
         r = requests.post(API_URL, json=entry, timeout=15)
         print(f"API→ {r.status_code} {r.text}")
-        # Accept both 200 (OK) and 201 (Created) as success
-        return r.status_code in [200, 201]
+        # Accept any 2xx response as success
+        return r.ok
     except Exception as e:
-        print(f"⚠️ send_data_direct error:", e)
+        print(f"⚠️ send_data_direct error: {e}")
         return False
 
 
@@ -708,17 +697,17 @@ def send_location_data_direct(latitude, longitude):
         "latitude": latitude,
         "longitude": longitude
     }
-    
+
     route = which_interface()
     print(f"🛣️  Default route: {route}")
     try:
         r = requests.post(location_url, json=location_data, timeout=15)
         print(f"📍 Location API→ {r.status_code} {r.text}")
-        # Accept both 200 (OK) and 201 (Created) as success
-        return r.status_code in [200, 201]
+        return r.ok
     except Exception as e:
-        print(f"⚠️ send_location_data_direct error:", e)
+        print(f"⚠️ send_location_data_direct error: {e}")
         return False
+
 
 
 def collect_sensor_reading():
@@ -754,131 +743,6 @@ def collect_sensor_reading():
     except Exception as e:
         print(f"⚠️ Error collecting sensor reading: {e}")
         return None
-
-
-def get_database_stats():
-    """
-    Get detailed database statistics for debugging
-    """
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Get detailed counts
-        cursor.execute('''
-            SELECT 
-                'sensor_readings' as table_name,
-                COUNT(*) as total,
-                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
-                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
-            FROM sensor_readings
-            UNION ALL
-            SELECT 
-                'status_updates' as table_name,
-                COUNT(*) as total,
-                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
-                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
-            FROM status_updates
-            UNION ALL
-            SELECT 
-                'location_data' as table_name,
-                COUNT(*) as total,
-                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
-                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
-            FROM location_data
-        ''', (MAX_RETRY_ATTEMPTS, MAX_RETRY_ATTEMPTS, MAX_RETRY_ATTEMPTS))
-        
-        results = cursor.fetchall()
-        conn.close()
-        
-        print("\n📊 Database Statistics:")
-        print("-" * 60)
-        print(f"{'Table':<15} {'Total':<8} {'Sent':<8} {'Pending':<8} {'Failed':<8}")
-        print("-" * 60)
-        
-        for row in results:
-            table, total, sent, pending, failed = row
-            print(f"{table:<15} {total:<8} {sent:<8} {pending:<8} {failed:<8}")
-        
-        print("-" * 60)
-        
-        return results
-        
-    except Exception as e:
-        print(f"⚠️ Error getting database stats: {e}")
-        return []
-
-
-def reset_failed_records():
-    """
-    Reset retry count for failed records (for manual recovery)
-    """
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Reset retry count for failed records
-        cursor.execute('''
-            UPDATE sensor_readings SET retry_count = 0 WHERE retry_count >= ?
-        ''', (MAX_RETRY_ATTEMPTS,))
-        reset_readings = cursor.rowcount
-        
-        cursor.execute('''
-            UPDATE status_updates SET retry_count = 0 WHERE retry_count >= ?
-        ''', (MAX_RETRY_ATTEMPTS,))
-        reset_status = cursor.rowcount
-        
-        cursor.execute('''
-            UPDATE location_data SET retry_count = 0 WHERE retry_count >= ?
-        ''', (MAX_RETRY_ATTEMPTS,))
-        reset_location = cursor.rowcount
-        
-        conn.commit()
-        conn.close()
-        
-        total_reset = reset_readings + reset_status + reset_location
-        if total_reset > 0:
-            print(f"🔄 Reset {total_reset} failed records for retry")
-        
-        return total_reset
-        
-    except Exception as e:
-        print(f"⚠️ Error resetting failed records: {e}")
-        return 0
-
-
-def force_cleanup_all():
-    """
-    Force cleanup of all sent records (for manual maintenance)
-    """
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Delete all sent records regardless of age
-        cursor.execute('DELETE FROM sensor_readings WHERE sent = TRUE')
-        deleted_readings = cursor.rowcount
-        
-        cursor.execute('DELETE FROM status_updates WHERE sent = TRUE')
-        deleted_status = cursor.rowcount
-        
-        cursor.execute('DELETE FROM location_data WHERE sent = TRUE')
-        deleted_location = cursor.rowcount
-        
-        conn.commit()
-        conn.close()
-        
-        total_deleted = deleted_readings + deleted_status + deleted_location
-        print(f"🧹 Force cleaned {total_deleted} sent records")
-        
-        return total_deleted
-        
-    except Exception as e:
-        print(f"⚠️ Error in force cleanup: {e}")
-        return 0
 
 
 def main():
@@ -982,8 +846,6 @@ def main():
             pending = get_pending_count()
             if pending['total'] > 0:
                 print(f"📊 Pending records: {pending['total']} (will retry next cycle)")
-            else:
-                print("📊 No pending records - all data synchronized")
             
             print("="*50)
 
@@ -992,83 +854,14 @@ def main():
         # Try to send any remaining data before exit
         print("📤 Attempting to send pending data before exit...")
         send_pending_data()
-        
-        # Show final status
-        pending = get_pending_count()
-        if pending['total'] > 0:
-            print(f"📊 {pending['total']} records remain pending (will be sent on next startup)")
-        else:
-            print("📊 All data successfully synchronized before shutdown")
-            
     except Exception as e:
         print(f"⚠️ Unexpected error in main loop: {e}")
         # Save error state offline if needed
         save_status_update_offline(1, False)
-        
-        # Try to send pending data even after error
-        try:
-            send_pending_data()
-        except:
-            print("⚠️ Could not send pending data due to error state")
-            
     finally:
         cleanup_gpio()
         print("🐝 Bee-Hive Monitor shutdown complete.")
 
 
 if __name__ == "__main__":
-    import sys
-    
-    # Check for command line arguments for maintenance functions
-    if len(sys.argv) > 1:
-        command = sys.argv[1].lower()
-        
-        if command == "stats":
-            print("🐝 Bee-Hive Monitor - Database Statistics")
-            setup_offline_storage()
-            get_database_stats()
-            
-        elif command == "reset":
-            print("🐝 Bee-Hive Monitor - Reset Failed Records")
-            setup_offline_storage()
-            reset_count = reset_failed_records()
-            if reset_count > 0:
-                print(f"✅ Reset {reset_count} failed records for retry")
-            else:
-                print("📊 No failed records to reset")
-                
-        elif command == "cleanup":
-            print("🐝 Bee-Hive Monitor - Force Cleanup")
-            setup_offline_storage()
-            deleted_count = force_cleanup_all()
-            if deleted_count > 0:
-                print(f"✅ Cleaned up {deleted_count} sent records")
-            else:
-                print("📊 No sent records to clean up")
-                
-        elif command == "pending":
-            print("🐝 Bee-Hive Monitor - Send Pending Data")
-            setup_offline_storage()
-            pending = get_pending_count()
-            if pending['total'] > 0:
-                print(f"📦 Found {pending['total']} pending records")
-                send_pending_data()
-            else:
-                print("📊 No pending records to send")
-                
-        elif command == "help":
-            print("🐝 Bee-Hive Monitor - Available Commands:")
-            print("  python3 app.py          - Run normal monitoring")
-            print("  python3 app.py stats    - Show database statistics")
-            print("  python3 app.py reset    - Reset failed records for retry")
-            print("  python3 app.py cleanup  - Force cleanup all sent records")
-            print("  python3 app.py pending  - Send pending data manually")
-            print("  python3 app.py help     - Show this help message")
-            
-        else:
-            print(f"⚠️ Unknown command: {command}")
-            print("Use 'python3 app.py help' for available commands")
-            
-    else:
-        # Normal operation
-        main()
+    main()
