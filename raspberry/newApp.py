@@ -252,7 +252,7 @@ def send_pending_data():
             }
             
             if send_data_direct(reading_data):
-                # Mark as sent and delete immediately (or keep for a few days)
+                # Mark as sent
                 cursor.execute('''
                     UPDATE sensor_readings SET sent = TRUE WHERE id = ?
                 ''', (reading_id,))
@@ -756,6 +756,131 @@ def collect_sensor_reading():
         return None
 
 
+def get_database_stats():
+    """
+    Get detailed database statistics for debugging
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Get detailed counts
+        cursor.execute('''
+            SELECT 
+                'sensor_readings' as table_name,
+                COUNT(*) as total,
+                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
+            FROM sensor_readings
+            UNION ALL
+            SELECT 
+                'status_updates' as table_name,
+                COUNT(*) as total,
+                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
+            FROM status_updates
+            UNION ALL
+            SELECT 
+                'location_data' as table_name,
+                COUNT(*) as total,
+                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
+                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
+                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
+            FROM location_data
+        ''', (MAX_RETRY_ATTEMPTS, MAX_RETRY_ATTEMPTS, MAX_RETRY_ATTEMPTS))
+        
+        results = cursor.fetchall()
+        conn.close()
+        
+        print("\n📊 Database Statistics:")
+        print("-" * 60)
+        print(f"{'Table':<15} {'Total':<8} {'Sent':<8} {'Pending':<8} {'Failed':<8}")
+        print("-" * 60)
+        
+        for row in results:
+            table, total, sent, pending, failed = row
+            print(f"{table:<15} {total:<8} {sent:<8} {pending:<8} {failed:<8}")
+        
+        print("-" * 60)
+        
+        return results
+        
+    except Exception as e:
+        print(f"⚠️ Error getting database stats: {e}")
+        return []
+
+
+def reset_failed_records():
+    """
+    Reset retry count for failed records (for manual recovery)
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Reset retry count for failed records
+        cursor.execute('''
+            UPDATE sensor_readings SET retry_count = 0 WHERE retry_count >= ?
+        ''', (MAX_RETRY_ATTEMPTS,))
+        reset_readings = cursor.rowcount
+        
+        cursor.execute('''
+            UPDATE status_updates SET retry_count = 0 WHERE retry_count >= ?
+        ''', (MAX_RETRY_ATTEMPTS,))
+        reset_status = cursor.rowcount
+        
+        cursor.execute('''
+            UPDATE location_data SET retry_count = 0 WHERE retry_count >= ?
+        ''', (MAX_RETRY_ATTEMPTS,))
+        reset_location = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        total_reset = reset_readings + reset_status + reset_location
+        if total_reset > 0:
+            print(f"🔄 Reset {total_reset} failed records for retry")
+        
+        return total_reset
+        
+    except Exception as e:
+        print(f"⚠️ Error resetting failed records: {e}")
+        return 0
+
+
+def force_cleanup_all():
+    """
+    Force cleanup of all sent records (for manual maintenance)
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Delete all sent records regardless of age
+        cursor.execute('DELETE FROM sensor_readings WHERE sent = TRUE')
+        deleted_readings = cursor.rowcount
+        
+        cursor.execute('DELETE FROM status_updates WHERE sent = TRUE')
+        deleted_status = cursor.rowcount
+        
+        cursor.execute('DELETE FROM location_data WHERE sent = TRUE')
+        deleted_location = cursor.rowcount
+        
+        conn.commit()
+        conn.close()
+        
+        total_deleted = deleted_readings + deleted_status + deleted_location
+        print(f"🧹 Force cleaned {total_deleted} sent records")
+        
+        return total_deleted
+        
+    except Exception as e:
+        print(f"⚠️ Error in force cleanup: {e}")
+        return 0
+
+
 def main():
     setup_gpio()
     print("🐝 Bee-Hive Monitor with Offline Support is ON.")
@@ -889,131 +1014,6 @@ def main():
     finally:
         cleanup_gpio()
         print("🐝 Bee-Hive Monitor shutdown complete.")
-
-
-def get_database_stats():
-    """
-    Get detailed database statistics for debugging
-    """
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Get detailed counts
-        cursor.execute('''
-            SELECT 
-                'sensor_readings' as table_name,
-                COUNT(*) as total,
-                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
-                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
-            FROM sensor_readings
-            UNION ALL
-            SELECT 
-                'status_updates' as table_name,
-                COUNT(*) as total,
-                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
-                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
-            FROM status_updates
-            UNION ALL
-            SELECT 
-                'location_data' as table_name,
-                COUNT(*) as total,
-                SUM(CASE WHEN sent = TRUE THEN 1 ELSE 0 END) as sent,
-                SUM(CASE WHEN sent = FALSE THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN retry_count >= ? THEN 1 ELSE 0 END) as failed
-            FROM location_data
-        ''', (MAX_RETRY_ATTEMPTS, MAX_RETRY_ATTEMPTS, MAX_RETRY_ATTEMPTS))
-        
-        results = cursor.fetchall()
-        conn.close()
-        
-        print("\n📊 Database Statistics:")
-        print("-" * 60)
-        print(f"{'Table':<15} {'Total':<8} {'Sent':<8} {'Pending':<8} {'Failed':<8}")
-        print("-" * 60)
-        
-        for row in results:
-            table, total, sent, pending, failed = row
-            print(f"{table:<15} {total:<8} {sent:<8} {pending:<8} {failed:<8}")
-        
-        print("-" * 60)
-        
-        return results
-        
-    except Exception as e:
-        print(f"⚠️ Error getting database stats: {e}")
-        return []
-
-
-def reset_failed_records():
-    """
-    Reset retry count for failed records (for manual recovery)
-    """
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Reset retry count for failed records
-        cursor.execute('''
-            UPDATE sensor_readings SET retry_count = 0 WHERE retry_count >= ?
-        ''', (MAX_RETRY_ATTEMPTS,))
-        reset_readings = cursor.rowcount
-        
-        cursor.execute('''
-            UPDATE status_updates SET retry_count = 0 WHERE retry_count >= ?
-        ''', (MAX_RETRY_ATTEMPTS,))
-        reset_status = cursor.rowcount
-        
-        cursor.execute('''
-            UPDATE location_data SET retry_count = 0 WHERE retry_count >= ?
-        ''', (MAX_RETRY_ATTEMPTS,))
-        reset_location = cursor.rowcount
-        
-        conn.commit()
-        conn.close()
-        
-        total_reset = reset_readings + reset_status + reset_location
-        if total_reset > 0:
-            print(f"🔄 Reset {total_reset} failed records for retry")
-        
-        return total_reset
-        
-    except Exception as e:
-        print(f"⚠️ Error resetting failed records: {e}")
-        return 0
-
-
-def force_cleanup_all():
-    """
-    Force cleanup of all sent records (for manual maintenance)
-    """
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Delete all sent records regardless of age
-        cursor.execute('DELETE FROM sensor_readings WHERE sent = TRUE')
-        deleted_readings = cursor.rowcount
-        
-        cursor.execute('DELETE FROM status_updates WHERE sent = TRUE')
-        deleted_status = cursor.rowcount
-        
-        cursor.execute('DELETE FROM location_data WHERE sent = TRUE')
-        deleted_location = cursor.rowcount
-        
-        conn.commit()
-        conn.close()
-        
-        total_deleted = deleted_readings + deleted_status + deleted_location
-        print(f"🧹 Force cleaned {total_deleted} sent records")
-        
-        return total_deleted
-        
-    except Exception as e:
-        print(f"⚠️ Error in force cleanup: {e}")
-        return 0
 
 
 if __name__ == "__main__":
