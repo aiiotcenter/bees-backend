@@ -14,6 +14,8 @@ from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 
+from smart_location import get_smart_location
+
 # Configuration
 API_URL      = "http://100.70.97.126:9602/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
@@ -814,10 +816,12 @@ def main():
 
             # 2) Get location once per cycle
             print(f"\n🌍 Getting location after {MAX_READINGS} readings...")
-            lat, lon = try_advanced_cellular_location()
-            if not lat or not lon:
-                # Fallback to standard cellular location
-                lat, lon = get_cellular_location()
+            # lat, lon = try_advanced_cellular_location()
+            # if not lat or not lon:
+            #     # Fallback to standard cellular location
+            #     lat, lon = get_cellular_location()
+
+            lat, lon, location_source = get_smart_location(verbose=True)
             
             if not lat or not lon:
                 lat, lon = 0, 0
