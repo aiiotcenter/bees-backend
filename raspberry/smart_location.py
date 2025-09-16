@@ -41,14 +41,14 @@ def is_location_reasonable(lat, lng):
     Check if location is within reasonable boundaries
     Returns (is_valid, distance_from_home)
     """
-    # First check boundaries
-    if not (LAT_MIN <= lat <= LAT_MAX and LNG_MIN <= lng <= LNG_MAX):
-        return False, None
-    
-    # Then check distance
+    # Calculate distance first
     distance = calculate_distance(lat, lng, HOME_LAT, HOME_LNG)
     
-    if distance <= MAX_ACCEPTABLE_DISTANCE:
+    # Check boundaries
+    in_boundaries = (LAT_MIN <= lat <= LAT_MAX and LNG_MIN <= lng <= LNG_MAX)
+    
+    # Check if valid (within boundaries AND within max distance)
+    if in_boundaries and distance <= MAX_ACCEPTABLE_DISTANCE:
         return True, distance
     
     return False, distance
@@ -204,30 +204,38 @@ def get_smart_location(verbose=True):
     if verbose:
         print("🌍 Attempting to get accurate location...")
     
-    lat, lng, accuracy = get_google_location(use_wifi=True)
-    
-    if lat and lng:
-        is_valid, distance = is_location_reasonable(lat, lng)
+    try:
+        lat, lng, accuracy = get_google_location(use_wifi=True)
         
-        if is_valid:
-            if verbose:
-                print(f"✅ Google location valid (WiFi-enhanced): {lat:.6f}, {lng:.6f}")
-                print(f"   Distance from home: {distance:.2f}km, Accuracy: {accuracy:.0f}m")
-            return lat, lng, 'google-wifi'
-        elif verbose:
-            print(f"⚠️ Google location rejected: {distance:.1f}km away (accuracy: {accuracy:.0f}m)")
-    
-    # Step 2: Try Google API without WiFi (faster, might work better)
-    lat, lng, accuracy = get_google_location(use_wifi=False)
-    
-    if lat and lng:
-        is_valid, distance = is_location_reasonable(lat, lng)
+        if lat is not None and lng is not None:
+            is_valid, distance = is_location_reasonable(lat, lng)
+            
+            if is_valid:
+                if verbose:
+                    print(f"✅ Google location valid (WiFi-enhanced): {lat:.6f}, {lng:.6f}")
+                    print(f"   Distance from home: {distance:.2f}km, Accuracy: {accuracy:.0f}m")
+                return lat, lng, 'google-wifi'
+            elif verbose:
+                if distance is not None:
+                    print(f"⚠️ Google location rejected: {distance:.1f}km away (accuracy: {accuracy:.0f}m)")
+                else:
+                    print(f"⚠️ Google location rejected: Invalid coordinates")
         
-        if is_valid:
-            if verbose:
-                print(f"✅ Google location valid (IP-only): {lat:.6f}, {lng:.6f}")
-                print(f"   Distance from home: {distance:.2f}km, Accuracy: {accuracy:.0f}m")
-            return lat, lng, 'google'
+        # Step 2: Try Google API without WiFi (faster, might work better)
+        lat, lng, accuracy = get_google_location(use_wifi=False)
+        
+        if lat is not None and lng is not None:
+            is_valid, distance = is_location_reasonable(lat, lng)
+            
+            if is_valid:
+                if verbose:
+                    print(f"✅ Google location valid (IP-only): {lat:.6f}, {lng:.6f}")
+                    print(f"   Distance from home: {distance:.2f}km, Accuracy: {accuracy:.0f}m")
+                return lat, lng, 'google'
+    
+    except Exception as e:
+        if verbose:
+            print(f"⚠️ Error getting Google location: {e}")
     
     # Step 3: Use intelligent fallback
     lat, lng = get_realistic_fallback_location()

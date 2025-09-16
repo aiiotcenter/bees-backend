@@ -553,10 +553,10 @@ def try_advanced_cellular_location():
         if response.status_code == 200:
             data = response.json()
             if 'location' in data:
-                # lat = data['location']['lat']
-                # lng = data['location']['lng']
-                lat = 35.3476
-                lng = 33.1505
+                lat = data['location']['lat']
+                lng = data['location']['lng']
+                # lat = 35.3476
+                # lng = 33.1505
                 accuracy = data.get('accuracy', 'unknown')
                 print(f"📍 Advanced cellular location: {lat}, {lng} (accuracy: {accuracy}m)")
                 return lat, lng
@@ -821,7 +821,36 @@ def main():
             #     # Fallback to standard cellular location
             #     lat, lon = get_cellular_location()
 
-            lat, lon, location_source = get_smart_location(verbose=True)
+            try:
+                # Import the smart location module
+                from smart_location import get_smart_location
+                
+                # Get location using smart module
+                lat, lon, location_source = get_smart_location(verbose=True)
+                
+                # Ensure we have valid coordinates
+                if lat is None or lon is None:
+                    print("⚠️ Smart location returned None, using fallback")
+                    lat, lon = 35.227, 33.32  # Your home coordinates
+                    
+            except ImportError:
+                print("⚠️ Smart location module not found, using original method")
+                # Fall back to your original method
+                lat, lon = try_advanced_cellular_location()
+                if not lat or not lon:
+                    lat, lon = get_cellular_location()
+                    
+            except Exception as e:
+                print(f"⚠️ Error in smart location: {e}")
+                # Use safe fallback
+                lat, lon = 35.227, 33.32
+
+            # Final validation
+            if not lat or not lon or lat == 0 or lon == 0:
+                lat, lon = 35.227, 33.32
+                print(f"⚠️ Using home coordinates: {lat}, {lon}")
+            else:
+                print(f"✅ Location acquired: {lat}, {lon}")
             
             if not lat or not lon:
                 lat, lon = 0, 0
