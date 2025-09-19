@@ -663,16 +663,23 @@ def send_data(entry):
 
 
 def send_data_direct(entry):
-    """
-    Direct API call to send sensor data (without offline handling)
-    """
-    route = which_interface()
-    print(f"🛣️  Default route: {route}")
+    # """
+    # Direct API call to send sensor data (without offline handling)
+    # """
+    # route = which_interface()
+    # print(f"🛣️  Default route: {route}")
+    # try:
+    #     r = requests.post(API_URL, json=entry, timeout=15)
+    #     print(f"API→ {r.status_code} {r.text}")
+    #     # Accept any 2xx response as success
+    #     return r.ok
+    # except Exception as e:
+    #     print(f"⚠️ send_data_direct error: {e}")
+    #     return False
     try:
-        r = requests.post(API_URL, json=entry, timeout=15)
+        r = requests.post(API_URL, json=data, timeout=15)
         print(f"API→ {r.status_code} {r.text}")
-        # Accept any 2xx response as success
-        return r.ok
+        return r.status_code in (200, 201)  # Accept both 200 and 201 as success
     except Exception as e:
         print(f"⚠️ send_data_direct error: {e}")
         return False
