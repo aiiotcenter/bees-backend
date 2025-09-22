@@ -17,8 +17,8 @@ from sensors.ir import read_ir_door_status
 from smart_location import get_smart_location
 
 # Configuration
-API_URL      = "https ://100.70.97.126:9602/api/records"
-# API_URL      = "https://198.187.28.245/api/records"
+API_URL      = "http ://100.70.97.126:9602/api/records"
+# API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
 READING_INTERVAL = 180  # 3 minutes in seconds
@@ -189,7 +189,7 @@ def check_internet_connectivity():
     """
     try:
         # Try a quick HTTP request to the API host
-        response = requests.get(f"https://{API_HOST}", timeout=10)
+        response = requests.get(f"http://{API_HOST}", timeout=10)
         print("🌐 Internet connection: ✅ Available")
         return True
     except:
@@ -427,7 +427,7 @@ def send_status_update_direct(hive_id: int, status: bool):
     """
     Direct API call to send status update (without offline handling)
     """
-    status_url = f"https://100.70.97.126:9602/api/hives/status/{hive_id}"
+    status_url = f"http://100.70.97.126:9602/api/hives/status/{hive_id}"
     payload = {"status": status}
     route = which_interface()
     print(f"🛣️  Default route: {route} (sending hive status)")
@@ -703,7 +703,7 @@ def send_location_data_direct(latitude, longitude):
     """
     Direct API call to send location data (without offline handling)
     """
-    location_url = "https://100.70.97.126:9602/api/hives/check-location/1"
+    location_url = "http://100.70.97.126:9602/api/hives/check-location/1"
     location_data = {
         "latitude": latitude,
         "longitude": longitude
