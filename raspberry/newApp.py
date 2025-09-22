@@ -17,7 +17,7 @@ from sensors.ir import read_ir_door_status
 from smart_location import get_smart_location
 
 # Configuration
-API_URL      = "http ://100.70.97.126:9602/api/records"
+API_URL      = "http://100.70.97.126:9602/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
