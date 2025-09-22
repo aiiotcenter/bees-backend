@@ -14,9 +14,11 @@ from sensors.DHT import get_temp_humidity
 from sensors.sound import monitor_sound
 from sensors.ir import read_ir_door_status
 
+from smart_location import get_smart_location
+
 # Configuration
-API_URL      = "http://100.70.97.126:9602/api/records"
-# API_URL      = "http://198.187.28.245/api/records"
+API_URL      = "https ://100.70.97.126:9602/api/records"
+# API_URL      = "https://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
 READING_INTERVAL = 180  # 3 minutes in seconds
@@ -187,7 +189,7 @@ def check_internet_connectivity():
     """
     try:
         # Try a quick HTTP request to the API host
-        response = requests.get(f"http://{API_HOST}", timeout=10)
+        response = requests.get(f"https://{API_HOST}", timeout=10)
         print("🌐 Internet connection: ✅ Available")
         return True
     except:
@@ -425,7 +427,7 @@ def send_status_update_direct(hive_id: int, status: bool):
     """
     Direct API call to send status update (without offline handling)
     """
-    status_url = f"http://100.70.97.126:9602/api/hives/status/{hive_id}"
+    status_url = f"https://100.70.97.126:9602/api/hives/status/{hive_id}"
     payload = {"status": status}
     route = which_interface()
     print(f"🛣️  Default route: {route} (sending hive status)")
@@ -433,10 +435,11 @@ def send_status_update_direct(hive_id: int, status: bool):
     try:
         r = requests.put(status_url, json=payload, timeout=15)
         print(f"🔔 Status API→ {r.status_code} {r.text}")
-        return r.status_code == 200
+        return r.ok
     except Exception as e:
         print(f"⚠️ send_status_update_direct error: {e}")
         return False
+
 
 
 def get_cellular_location():
@@ -552,6 +555,8 @@ def try_advanced_cellular_location():
             if 'location' in data:
                 lat = data['location']['lat']
                 lng = data['location']['lng']
+                # lat = 35.3476
+                # lng = 33.1505
                 accuracy = data.get('accuracy', 'unknown')
                 print(f"📍 Advanced cellular location: {lat}, {lng} (accuracy: {accuracy}m)")
                 return lat, lng
@@ -658,17 +663,25 @@ def send_data(entry):
 
 
 def send_data_direct(entry):
-    """
-    Direct API call to send sensor data (without offline handling)
-    """
-    route = which_interface()
-    print(f"🛣️  Default route: {route}")
+    # """
+    # Direct API call to send sensor data (without offline handling)
+    # """
+    # route = which_interface()
+    # print(f"🛣️  Default route: {route}")
+    # try:
+    #     r = requests.post(API_URL, json=entry, timeout=15)
+    #     print(f"API→ {r.status_code} {r.text}")
+    #     # Accept any 2xx response as success
+    #     return r.ok
+    # except Exception as e:
+    #     print(f"⚠️ send_data_direct error: {e}")
+    #     return False
     try:
         r = requests.post(API_URL, json=entry, timeout=15)
         print(f"API→ {r.status_code} {r.text}")
-        return r.status_code == 200
+        return r.status_code in (200, 201)  # Accept both 200 and 201 as success
     except Exception as e:
-        print(f"⚠️ send_data_direct error:", e)
+        print(f"⚠️ send_data_direct error: {e}")
         return False
 
 
@@ -690,21 +703,22 @@ def send_location_data_direct(latitude, longitude):
     """
     Direct API call to send location data (without offline handling)
     """
-    location_url = "http://100.70.97.126:9602/api/hives/check-location/1"
+    location_url = "https://100.70.97.126:9602/api/hives/check-location/1"
     location_data = {
         "latitude": latitude,
         "longitude": longitude
     }
-    
+
     route = which_interface()
     print(f"🛣️  Default route: {route}")
     try:
         r = requests.post(location_url, json=location_data, timeout=15)
         print(f"📍 Location API→ {r.status_code} {r.text}")
-        return r.status_code == 200
+        return r.ok
     except Exception as e:
-        print(f"⚠️ send_location_data_direct error:", e)
+        print(f"⚠️ send_location_data_direct error: {e}")
         return False
+
 
 
 def collect_sensor_reading():
@@ -809,10 +823,41 @@ def main():
 
             # 2) Get location once per cycle
             print(f"\n🌍 Getting location after {MAX_READINGS} readings...")
-            lat, lon = try_advanced_cellular_location()
-            if not lat or not lon:
-                # Fallback to standard cellular location
-                lat, lon = get_cellular_location()
+            # lat, lon = try_advanced_cellular_location()
+            # if not lat or not lon:
+            #     # Fallback to standard cellular location
+            #     lat, lon = get_cellular_location()
+
+            try:
+                # Import the smart location module
+                from smart_location import get_smart_location
+                
+                # Get location using smart module
+                lat, lon, location_source = get_smart_location(verbose=True)
+                
+                # Ensure we have valid coordinates
+                if lat is None or lon is None:
+                    print("⚠️ Smart location returned None, using fallback")
+                    lat, lon = 35.227, 33.32  # Your home coordinates
+                    
+            except ImportError:
+                print("⚠️ Smart location module not found, using original method")
+                # Fall back to your original method
+                lat, lon = try_advanced_cellular_location()
+                if not lat or not lon:
+                    lat, lon = get_cellular_location()
+                    
+            except Exception as e:
+                print(f"⚠️ Error in smart location: {e}")
+                # Use safe fallback
+                lat, lon = 35.227, 33.32
+
+            # Final validation
+            if not lat or not lon or lat == 0 or lon == 0:
+                lat, lon = 35.227, 33.32
+                print(f"⚠️ Using home coordinates: {lat}, {lon}")
+            else:
+                print(f"✅ Location acquired: {lat}, {lon}")
             
             if not lat or not lon:
                 lat, lon = 0, 0
