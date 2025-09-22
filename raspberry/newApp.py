@@ -677,7 +677,7 @@ def send_data_direct(entry):
     #     print(f"⚠️ send_data_direct error: {e}")
     #     return False
     try:
-        r = requests.post(API_URL, json=data, timeout=15)
+        r = requests.post(API_URL, json=entry, timeout=15)
         print(f"API→ {r.status_code} {r.text}")
         return r.status_code in (200, 201)  # Accept both 200 and 201 as success
     except Exception as e:
