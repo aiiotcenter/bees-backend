@@ -1,0 +1,16 @@
+#sudo nano /etc/systemd/system/bees-camera.service
+
+[Unit]
+Description=Beehive Camera Stream Service
+After=network.target
+
+[Service]
+ExecStart=/home/pi/bees-backend/raspberry/venv/bin/python3 /home/pi/bees-backend/raspberry/camera.py
+WorkingDirectory=/home/pi/bees-backend/raspberry
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target

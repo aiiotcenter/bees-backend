@@ -1,0 +1,16 @@
+#sudo nano /etc/systemd/system/bees-fan.service
+
+[Unit]
+Description=Bees Fan Controller Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/pi/bees-backend/raspberry
+ExecStart=/bin/bash -c 'source /home/pi/venv/bin/activate && python /home/pi/bees-backend/raspberry/fan_controller.py'
+Restart=always
+User=pi
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=bees.target

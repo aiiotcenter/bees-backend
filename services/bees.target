@@ -1,0 +1,9 @@
+#sudo nano /etc/systemd/system/bees.target
+
+[Unit]
+Description=Bees Target to start all bees services
+Requires=bees-app.service bees-fan.service bees-camera.service
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
