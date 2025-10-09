@@ -1,7 +1,8 @@
 import requests, time, json
 
 HIVE_ID = 1
-SERVER_URL = "http://100.70.97.126:9602/api/hives/heartbeat"
+#SERVER_URL = "http://100.70.97.126:9602/api/hives/heartbeat"
+SERVER_URL = "https://af7cab8468a7.ngrok-free.app"
 
 def send_heartbeat():
     while True:
