@@ -30,7 +30,7 @@ MAX_RETRY_ATTEMPTS = 3
 RETRY_INTERVAL = 30  # seconds between retry attempts
 
 # Google Geolocation API Key
-GOOGLE_API_KEY = "AIzaSyCysMdMd_f01vX0vF6EOJtohcAe0YvtipY"
+GOOGLE_API_KEY = "AIzaSyAoMkVZUAMc91JvW_UclM4sSEzJBkW8dgY"
 USB_INTERFACE = "eth1"  # ZTE WCDMA modem creates eth1 interface
 
 
