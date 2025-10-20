@@ -64,7 +64,7 @@ def get_temp_humidity():
         # DYNAMIC Version
         # from smart_location import get_smart_location
         # lat, lon, _ = get_smart_location(verbose=False)
-        lat, lon = 35.1856, 33.3823
+        lat, lon = 35.3476, 33.1485
 
         temp, hum = get_weather_from_google(lat, lon)
 
