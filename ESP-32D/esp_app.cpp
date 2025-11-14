@@ -22,8 +22,8 @@ need to be specified!
 DHT dht(DHT_PIN, DHT_TYPE);
 
 // WiFi Configuration
-const char* ssid = "WIFI_SSID";
-const char* password = "WIFI_PASSWORD";
+const char* ssid = "AI_Room";
+const char* password = "********";
 
 // Static IP Configuration
 IPAddress staticIP(192, 168, 254, 187);     // Static IP address
@@ -33,14 +33,14 @@ IPAddress primaryDNS(8, 8, 8, 8);           // Primary DNS (Google)
 IPAddress secondaryDNS(8, 8, 4, 4);         // Secondary DNS (Google)
 
 // API Configuration
-const char* apiUrl = "http://100.70.97.126:9602/api/records";
-const char* statusUrl = "http://100.70.97.126:9602/api/hives/status/1";
-const char* locationUrl = "http://100.70.97.126:9602/api/hives/check-location/1";
+const char* apiUrl = "https://beehive.aiiot.center/api/records";
+const char* statusUrl = "https://beehive.aiiot.center/api/hives/status/1";
+const char* locationUrl = "https://beehive.aiiot.center/api/hives/check-location/1";
 
 // Web Server Configuration
 WebServer server(80);
-String webUsername = "username";
-String webPassword = "password";
+String webUsername = "admin";
+String webPassword = "12345";
 
 // Timing Configuration
 const unsigned long READING_INTERVAL = 180000;  // 3 minutes in milliseconds
@@ -363,7 +363,7 @@ SensorReading collectSensorReading() {
   }
   
   // Set sensor values (not available on ESP32 yet)
-  reading.hiveId = "1";
+  reading.hiveId = "2";
   reading.weight = 0;
   reading.distance = 0;
   reading.soundStatus = 0;
@@ -853,174 +853,197 @@ String generateDashboardHTML() {
     <title>ESP32 Beehive Monitor</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial; margin: 20px; background: #f0f8ff; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(45deg, #ff6b35, #f7931e); color: white; text-align: center; }
-        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .stat-box { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px; }
-        .stat-value { font-size: 24px; font-weight: bold; color: #333; }
-        .stat-label { color: #666; font-size: 14px; }
-        .btn { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
-        .btn-primary { background: #007bff; color: white; }
-        .btn-warning { background: #ffc107; color: black; }
-        .btn-danger { background: #dc3545; color: white; }
-        .btn:hover { opacity: 0.8; }
-        .online { color: #28a745; }
-        .offline { color: #dc3545; }
-        #log { background: #2d3748; color: #e2e8f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+        body { 
+            margin: 0; 
+            font-family: Arial, Helvetica, sans-serif; 
+            background: #f5f7fa;
+        }
+        .header {
+            background: linear-gradient(45deg, #ff7e00, #ffb347);
+            padding: 25px;
+            text-align: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            border-bottom-left-radius: 18px;
+            border-bottom-right-radius: 18px;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 18px;
+            border-radius: 14px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+        }
+        .stat {
+            background: #fff7ec;
+            text-align: center;
+            padding: 15px;
+            border-radius: 12px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: #777;
+        }
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 8px;
+            font-size: 14px;
+        }
+        .btn-blue { background: #007bff; color: white; }
+        .btn-orange { background: #ff9800; color: white; }
+        .btn-red { background: #d9534f; color: white; }
+        .btn:hover { opacity: 0.85; }
+
+        #logBox {
+            background: #2d2f34;
+            color: #d8e0ea;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
     </style>
 </head>
+
 <body>
+    <div class="header">ESP32 Beehive Monitor</div>
+
     <div class="container">
-        <div class="card header">
-            <h1>ESP32 Beehive Monitor</h1>
-            <p>Remote Monitoring Dashboard</p>
-        </div>
-        
+
         <div class="card">
-            <h2>System Status</h2>
-            <div class="status-grid" id="statusGrid">
-                <div class="stat-box">
-                    <div class="stat-value" id="wifiStatus">Loading...</div>
+            <h3>System Status</h3>
+            <div class="grid">
+                <div class="stat">
+                    <div id="wifiStatus" class="stat-value">--</div>
                     <div class="stat-label">WiFi Status</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="temperature">-°C</div>
+                <div class="stat">
+                    <div id="temperature" class="stat-value">--</div>
                     <div class="stat-label">Temperature</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="humidity">-%</div>
+                <div class="stat">
+                    <div id="humidity" class="stat-value">--</div>
                     <div class="stat-label">Humidity</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="uptime">0s</div>
+                <div class="stat">
+                    <div id="uptime" class="stat-value">--</div>
                     <div class="stat-label">Uptime</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="offlineRecords">0</div>
+                <div class="stat">
+                    <div id="offlineRecords" class="stat-value">--</div>
                     <div class="stat-label">Offline Records</div>
                 </div>
-                <div class="stat-box">
-                    <div class="stat-value" id="freeHeap">0 KB</div>
+                <div class="stat">
+                    <div id="freeHeap" class="stat-value">--</div>
                     <div class="stat-label">Free Memory</div>
                 </div>
             </div>
         </div>
-        
+
         <div class="card">
-            <h2>Controls</h2>
-            <button class="btn btn-primary" onclick="sendOfflineData()">Send Offline Data</button>
-            <button class="btn btn-warning" onclick="clearOfflineData()">Clear Offline Data</button>
-            <button class="btn btn-primary" onclick="refreshData()">Refresh</button>
-            <button class="btn btn-danger" onclick="rebootDevice()">Reboot ESP32</button>
+            <h3>Controls</h3>
+            <button class="btn btn-blue" onclick="sendOffline()">Send Offline</button>
+            <button class="btn btn-orange" onclick="clearOffline()">Clear Offline</button>
+            <button class="btn btn-blue" onclick="refreshData()">Refresh</button>
+            <button class="btn btn-red" onclick="rebootESP()">Reboot</button>
         </div>
-        
+
         <div class="card">
-            <h2>Activity Log</h2>
-            <div id="log"></div>
+            <h3>Activity Log</h3>
+            <div id="logBox"></div>
         </div>
+
     </div>
 
-    <script>
-        function log(message) {
-            const logDiv = document.getElementById('log');
-            const timestamp = new Date().toLocaleTimeString();
-            logDiv.innerHTML += '[' + timestamp + '] ' + message + '\n';
-            logDiv.scrollTop = logDiv.scrollHeight;
-        }
+<script>
+function log(msg) {
+    const box = document.getElementById('logBox');
+    const ts = new Date().toLocaleTimeString();
+    box.innerHTML += `[${ts}] ${msg}<br>`;
+    box.scrollTop = box.scrollHeight;
+}
 
-        function updateStatus() {
-            fetch('/api/status')
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById('wifiStatus').textContent = data.wifiConnected ? 'Online' : 'Offline';
-                    document.getElementById('wifiStatus').className = 'stat-value ' + (data.wifiConnected ? 'online' : 'offline');
-                    
-                    document.getElementById('temperature').textContent = data.currentTemperature + '°C';
-                    document.getElementById('humidity').textContent = data.currentHumidity + '%';
-                    document.getElementById('uptime').textContent = formatUptime(data.uptime);
-                    document.getElementById('offlineRecords').textContent = data.offlineRecords;
-                    document.getElementById('freeHeap').textContent = Math.round(data.freeHeap / 1024) + ' KB';
-                })
-                .catch(error => {
-                    log('Error fetching status: ' + error.message);
-                });
-        }
+function refreshData() {
+    fetch('/api/status')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('wifiStatus').innerText = data.wifiConnected ? "Online" : "Offline";
+            document.getElementById('temperature').innerText = data.currentTemperature + "°C";
+            document.getElementById('humidity').innerText = data.currentHumidity + "%";
+            document.getElementById('uptime').innerText = formatUptime(data.uptime);
+            document.getElementById('offlineRecords').innerText = data.offlineRecords;
+            document.getElementById('freeHeap').innerText = Math.round(data.freeHeap/1024) + " KB";
+            log("Status updated");
+        })
+        .catch(err => log("Error: " + err));
+}
 
-        function sendOfflineData() {
-            log('Sending offline data...');
-            fetch('/api/send', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    log(data.message + ' - Sent: ' + data.sent + ' records');
-                    updateStatus();
-                })
-                .catch(error => {
-                    log('Error sending data: ' + error.message);
-                });
-        }
+function sendOffline() {
+    log("Sending offline data...");
+    fetch('/api/send', {method:'POST'})
+        .then(r => r.json())
+        .then(data => {
+            log("Send: " + data.sent + " records");
+            refreshData();
+        });
+}
 
-        function clearOfflineData() {
-            if (confirm('Are you sure you want to clear all offline data?')) {
-                log('Clearing offline data...');
-                fetch('/api/clear', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        log(data.message);
-                        updateStatus();
-                    })
-                    .catch(error => {
-                        log('Error clearing data: ' + error.message);
-                    });
-            }
-        }
+function clearOffline() {
+    if(!confirm("Clear ALL offline data?")) return;
+    log("Clearing offline data...");
+    fetch('/api/clear', {method:'POST'})
+        .then(r => r.json())
+        .then(data => {
+            log(data.message);
+            refreshData();
+        });
+}
 
-        function rebootDevice() {
-            if (confirm('Are you sure you want to reboot the ESP32?')) {
-                log('Rebooting device...');
-                fetch('/api/reboot', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => {
-                        log(data.message);
-                        setTimeout(() => {
-                            log('Device should be rebooting now...');
-                        }, 3000);
-                    })
-                    .catch(error => {
-                        log('Error rebooting: ' + error.message);
-                    });
-            }
-        }
+function rebootESP() {
+    if(!confirm("Reboot ESP32?")) return;
+    log("Rebooting...");
+    fetch('/api/reboot', {method:'POST'});
+}
 
-        function refreshData() {
-            log('Refreshing data...');
-            updateStatus();
-        }
+function formatUptime(seconds){
+    let h = Math.floor(seconds/3600);
+    let m = Math.floor((seconds%3600)/60);
+    return h+"h "+m+"m";
+}
 
-        function formatUptime(seconds) {
-            const days = Math.floor(seconds / 86400);
-            const hours = Math.floor((seconds % 86400) / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            
-            if (days > 0) return days + 'd ' + hours + 'h';
-            if (hours > 0) return hours + 'h ' + minutes + 'm';
-            return minutes + 'm';
-        }
+setInterval(refreshData, 30000);
+refreshData();
+log("Dashboard loaded");
+</script>
 
-        // Auto-refresh every 30 seconds
-        setInterval(updateStatus, 30000);
-        
-        // Initial load
-        updateStatus();
-        log('Dashboard loaded successfully');
-    </script>
 </body>
 </html>
 )rawliteral";
-  
+
   return html;
 }
+
 
 void printSystemInfo() {
   Serial.println("ESP32 System Information:");
