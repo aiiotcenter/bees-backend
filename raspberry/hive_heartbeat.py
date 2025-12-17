@@ -1,7 +1,7 @@
 import requests, time, json
 
 HIVE_ID = 1
-SERVER_URL = "http://100.125.227.62:9602/api/hives/heartbeat"
+SERVER_URL = "https://bees-backend.aiiot.center/api/hives/heartbeat"
 
 def send_heartbeat():
     while True:

@@ -17,7 +17,7 @@ from sensors.ir import read_ir_door_status
 from smart_location import get_smart_location
 
 # Configuration
-API_URL      = "http://100.125.227.62:9602/api/records"
+API_URL      = "https://bees-backend.aiiot.center/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
@@ -427,7 +427,7 @@ def send_status_update_direct(hive_id: int, status: bool):
     """
     Direct API call to send status update (without offline handling)
     """
-    status_url = f"http://100.125.227.62:9602/api/hives/status/{hive_id}"
+    status_url = f"https://bees-backend.aiiot.center/api/hives/status/{hive_id}"
     payload = {"status": status}
     route = which_interface()
     print(f"🛣️  Default route: {route} (sending hive status)")
@@ -703,7 +703,7 @@ def send_location_data_direct(latitude, longitude):
     """
     Direct API call to send location data (without offline handling)
     """
-    location_url = "http://100.125.227.62:9602/api/hives/check-location/1"
+    location_url = "https://bees-backend.aiiot.center/api/hives/check-location/1"
     location_data = {
         "latitude": latitude,
         "longitude": longitude
