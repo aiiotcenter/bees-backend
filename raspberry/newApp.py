@@ -786,8 +786,8 @@ def main():
                 send_pending_data()
                 
                 # Clean up old data every 10 cycles
-                if cycle_count % 10 == 0:
-                    cleanup_old_data()
+                # if cycle_count % 10 == 0:
+                #     cleanup_old_data()
             
             # 1) Collect sensor readings every 3 minutes for 9 minutes total
             for reading_num in range(MAX_READINGS):
