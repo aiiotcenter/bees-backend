@@ -21,7 +21,7 @@ API_URL      = "https://bees-backend.aiiot.center/api/records"
 # API_URL      = "http://198.187.28.245/api/records"
 API_HOST     = "bees-backend.aiiot.center"
 MAX_READINGS = 3
-READING_INTERVAL = 180  # 3 minutes in seconds
+READING_INTERVAL = 1200  # 20 minutes in seconds
 
 # Offline storage configuration
 DATA_DIR = Path("/home/pi/beehive_data")  # Change path as needed
