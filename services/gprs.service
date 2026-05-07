@@ -1,0 +1,54 @@
+-> Packages installed: sudo apt install -y usb-modeswitch usb-modeswitch-data
+____________________________________________________________________________________________________________________
+
+-> /etc/ppp/peers/provider — PPP peer configuration for Vodafone Turkey(Replaced the default template with):
+
+/dev/ttyUSB0
+115200
+noauth
+defaultroute
+usepeerdns
+persist
+noipdefault
+novj
+novjccomp
+noccp
+ipcp-accept-local
+ipcp-accept-remote
+connect "/usr/sbin/chat -v -f /etc/chatscripts/gprs -T internet"
+____________________________________________________________________________________________________________________
+
+
+-> /etc/chatscripts/gprs — already existed on the system, no changes needed
+____________________________________________________________________________________________________________________
+
+
+-> /etc/systemd/system/gprs.service — new systemd service to auto-start GPRS on boot:
+
+[Unit]
+Description=GPRS Cellular Connection
+After=network.target
+Before=bees.target
+
+[Service]
+Type=forking
+ExecStart=/bin/bash /home/pi/bees-backend/raspberry/gprs_connect.sh
+ExecStop=/usr/bin/poff provider
+Restart=on-failure
+RestartSec=30
+PIDFile=/var/run/ppp0.pid
+
+[Install]
+WantedBy=multi-user.target
+____________________________________________________________________________________________________________________
+
+
+-> /etc/systemd/system/bees.target — updated to wait for GPRS:
+
+[Unit]
+Description=Bees Management System
+After=network.target gprs.service
+Wants=bees-app.service bees-fan.service bees-heartbeat.service
+
+[Install]
+WantedBy=multi-user.target
